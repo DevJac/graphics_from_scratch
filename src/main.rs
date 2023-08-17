@@ -33,6 +33,8 @@ mod state {
                     .video()
                     .unwrap()
                     .window("Renderer", width, height)
+                    .borderless()
+                    .maximized()
                     .build()
                     .unwrap();
                 addr_of_mut!((*rp).canvas).write(window.into_canvas().build().unwrap());
@@ -97,8 +99,8 @@ mod state {
 fn main() {
     use state::State;
 
-    let width = 800;
-    let height = 600;
+    let width = 3440 / 2;
+    let height = 1440 / 2;
     let mut state = State::new(width, height);
     state.render();
     'main_loop: loop {
