@@ -37,7 +37,14 @@ mod state {
                     .maximized()
                     .build()
                     .unwrap();
-                addr_of_mut!((*rp).canvas).write(window.into_canvas().build().unwrap());
+                addr_of_mut!((*rp).canvas).write(
+                    window
+                        .into_canvas()
+                        .accelerated()
+                        .present_vsync()
+                        .build()
+                        .unwrap(),
+                );
                 addr_of_mut!((*rp).texture_creator).write(Box::pin((*rp).canvas.texture_creator()));
                 addr_of_mut!((*rp).color_buffer_texture).write(Box::new(
                     (*rp)
