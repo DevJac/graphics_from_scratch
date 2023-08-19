@@ -9,30 +9,6 @@ mod pixel_renderer {
     use sdl2::pixels::{Color, PixelFormat};
     use sdl2::render::{Canvas, Texture, TextureAccess, TextureCreator};
     use sdl2::video::{Window, WindowContext};
-    use std::marker::PhantomPinned;
-    use std::pin::Pin;
-
-    struct PinWrapper<T> {
-        _pin: PhantomPinned,
-        value: T,
-    }
-
-    impl<T> PinWrapper<T> {
-        fn new(t: T) -> Self {
-            Self {
-                _pin: PhantomPinned,
-                value: t,
-            }
-        }
-    }
-
-    impl<T> std::ops::Deref for PinWrapper<T> {
-        type Target = T;
-
-        fn deref(&self) -> &Self::Target {
-            &self.value
-        }
-    }
 
     pub struct PixelRenderer {
         pub width: u32,
@@ -44,7 +20,7 @@ mod pixel_renderer {
         // so color_texture must come before texture_creator in the struct definition.
         color_buffer: Box<[u8]>,
         color_texture: Box<Texture<'static>>,
-        texture_creator: Pin<Box<PinWrapper<TextureCreator<WindowContext>>>>,
+        texture_creator: Box<TextureCreator<WindowContext>>,
     }
 
     impl PixelRenderer {
@@ -67,14 +43,18 @@ mod pixel_renderer {
             let pixel_count: usize = (width * height).try_into().unwrap();
             let color_buffer: Box<[u8]> =
                 vec![0u8; pixel_count * std::mem::size_of::<Color>()].into_boxed_slice();
-            let texture_creator: Pin<Box<PinWrapper<TextureCreator<WindowContext>>>> =
-                Box::pin(PinWrapper::new(canvas.texture_creator()));
-            let tc_forget_lifetime: &Pin<Box<PinWrapper<TextureCreator<WindowContext>>>> =
-                unsafe { &*(&texture_creator as *const _) };
+            let texture_creator: Box<TextureCreator<WindowContext>> =
+                Box::new(canvas.texture_creator());
+            // Unsafe: We cast through a raw pointer to forget the borrow.
+            // We will ensure the borrow doesn't live too long ourselves by keeping
+            // texture_creator and color_texture together in a struct.
+            // They will live together and drop together.
+            let texture_creator_forgotten_borrow: &TextureCreator<WindowContext> =
+                unsafe { &*(&*texture_creator as *const _) };
             let color_texture = Box::new(
-                tc_forget_lifetime
+                texture_creator_forgotten_borrow
                     .create_texture(
-                        tc_forget_lifetime.default_pixel_format(),
+                        texture_creator_forgotten_borrow.default_pixel_format(),
                         TextureAccess::Streaming,
                         width,
                         height,
