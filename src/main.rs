@@ -2,10 +2,10 @@ use pixel_renderer::PixelRenderer;
 use sdl2::pixels::Color;
 
 mod pixel_renderer {
-    // Unsafe: TextureCreator and Texture are related, the sdl2 docs aren't 100% clear on how.
+    // Unsafe: TextureCreator and Texture are related.
     // color_texture needs to be dropped before texture_creator.
-    // The plan is to keep both of them together in this struct, and to keep them private so
-    // that the unsafe behavior doesn't leak outside of this module.
+    // The plan is to keep both of them together in this struct,
+    // and eventually drop them together.
     use sdl2::pixels::{Color, PixelFormat};
     use sdl2::render::{Canvas, Texture, TextureAccess, TextureCreator};
     use sdl2::video::{Window, WindowContext};
@@ -15,12 +15,21 @@ mod pixel_renderer {
         pub height: u32,
         pub context: sdl2::Sdl,
         pub canvas: Canvas<Window>,
-        // Unsafe: color_texture must be dropped before texture_creator.
-        // Struct fields are dropped in the order they are defined,
-        // so color_texture must come before texture_creator in the struct definition.
         color_buffer: Box<[u8]>,
-        color_texture: Box<Texture<'static>>,
-        texture_creator: Box<TextureCreator<WindowContext>>,
+        // Unsafe: color_texture must be dropped before texture_creator.
+        // We will handle this in the drop trait.
+        color_texture: *mut Texture<'static>,
+        texture_creator: *mut TextureCreator<WindowContext>,
+    }
+
+    impl Drop for PixelRenderer {
+        fn drop(&mut self) {
+            // Unsafe: color_texture must be dropped before texture_creator.
+            unsafe {
+                drop(Box::from_raw(&mut *self.color_texture));
+                drop(Box::from_raw(&mut *self.texture_creator));
+            }
+        }
     }
 
     impl PixelRenderer {
@@ -43,24 +52,20 @@ mod pixel_renderer {
             let pixel_count: usize = (width * height).try_into().unwrap();
             let color_buffer: Box<[u8]> =
                 vec![0u8; pixel_count * std::mem::size_of::<Color>()].into_boxed_slice();
-            let texture_creator: Box<TextureCreator<WindowContext>> =
-                Box::new(canvas.texture_creator());
-            // Unsafe: We cast through a raw pointer to forget the borrow.
-            // We will ensure the borrow doesn't live too long ourselves by keeping
-            // texture_creator and color_texture together in a struct.
-            // They will live together and drop together.
-            let texture_creator_forgotten_borrow: &TextureCreator<WindowContext> =
-                unsafe { &*(&*texture_creator as *const _) };
-            let color_texture = Box::new(
-                texture_creator_forgotten_borrow
+            // Unsafe: We will manage the life of texture_creator and color_texture ourselves.
+            // We will keep them together in this struct and eventually drop them together.
+            let texture_creator: *mut TextureCreator<WindowContext> =
+                Box::into_raw(Box::new(canvas.texture_creator()));
+            let color_texture: *mut Texture<'static> = Box::into_raw(Box::new(
+                unsafe { &*texture_creator }
                     .create_texture(
-                        texture_creator_forgotten_borrow.default_pixel_format(),
+                        unsafe { &*texture_creator }.default_pixel_format(),
                         TextureAccess::Streaming,
                         width,
                         height,
                     )
                     .unwrap(),
-            );
+            ));
             Self {
                 width,
                 height,
@@ -85,7 +90,10 @@ mod pixel_renderer {
             // the pixel format and the system endianness.
             let color_bytes: &[u8; 4] = &c
                 .to_u32(
-                    &PixelFormat::try_from(self.texture_creator.default_pixel_format()).unwrap(),
+                    &PixelFormat::try_from(
+                        unsafe { &*self.texture_creator }.default_pixel_format(),
+                    )
+                    .unwrap(),
                 )
                 .to_ne_bytes();
 
@@ -97,11 +105,13 @@ mod pixel_renderer {
             let width: usize = self.width.try_into().unwrap();
             let pitch: usize = width * size_of_color;
 
-            self.color_texture
+            unsafe { &mut *self.color_texture }
                 .update(None, &self.color_buffer, pitch)
                 .unwrap();
 
-            self.canvas.copy(&self.color_texture, None, None).unwrap();
+            self.canvas
+                .copy(unsafe { &*self.color_texture }, None, None)
+                .unwrap();
 
             self.canvas.present();
         }
