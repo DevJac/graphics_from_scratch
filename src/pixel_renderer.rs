@@ -2,7 +2,7 @@
 // color_texture needs to be dropped before texture_creator.
 // The plan is to keep both of them together in this struct,
 // and eventually drop them together.
-use sdl2::pixels::{Color, PixelFormat};
+use sdl2::pixels::{Color, PixelFormat, PixelFormatEnum};
 use sdl2::render::{Canvas, Texture, TextureAccess, TextureCreator};
 use sdl2::video::{Window, WindowContext};
 
@@ -11,7 +11,8 @@ pub struct PixelRenderer {
     pub height: u32,
     pub context: sdl2::Sdl,
     pub canvas: Canvas<Window>,
-    color_buffer: Box<[u8]>,
+    pub color_buffer: Box<[u8]>,
+    pub pixel_format: PixelFormat,
     // Unsafe: color_texture must be dropped before texture_creator.
     // We will handle this in the drop trait.
     color_texture: *mut Texture<'static>,
@@ -52,14 +53,12 @@ impl PixelRenderer {
         // We will keep them together in this struct and eventually drop them together.
         let texture_creator: *mut TextureCreator<WindowContext> =
             Box::into_raw(Box::new(canvas.texture_creator()));
+        let pixel_format_enum: PixelFormatEnum =
+            unsafe { &*texture_creator }.default_pixel_format();
+        let pixel_format: PixelFormat = pixel_format_enum.try_into().unwrap();
         let color_texture: *mut Texture<'static> = Box::into_raw(Box::new(
             unsafe { &*texture_creator }
-                .create_texture(
-                    unsafe { &*texture_creator }.default_pixel_format(),
-                    TextureAccess::Streaming,
-                    width,
-                    height,
-                )
+                .create_texture(pixel_format_enum, TextureAccess::Streaming, width, height)
                 .unwrap(),
         ));
         Self {
@@ -68,6 +67,7 @@ impl PixelRenderer {
             context,
             canvas,
             color_buffer,
+            pixel_format,
             texture_creator,
             color_texture,
         }
@@ -84,12 +84,7 @@ impl PixelRenderer {
 
         // Turn the color into bytes. The correct bytes for a color depend on
         // the pixel format and the system endianness.
-        let color_bytes: &[u8; 4] = &c
-            .to_u32(
-                &PixelFormat::try_from(unsafe { &*self.texture_creator }.default_pixel_format())
-                    .unwrap(),
-            )
-            .to_ne_bytes();
+        let color_bytes: &[u8; 4] = &c.to_u32(&self.pixel_format).to_ne_bytes();
 
         self.color_buffer[i..i + size_of_color].copy_from_slice(color_bytes);
     }
