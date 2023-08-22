@@ -8,8 +8,6 @@ pub fn draw_grid(pixel_renderer: &mut PixelRenderer) {
     let mut rng = rand::thread_rng();
     for x in 0..pixel_renderer.width {
         for y in 0..pixel_renderer.height {
-            assert!(x < pixel_renderer.width);
-            assert!(y < pixel_renderer.height);
             if x % 10 == 0 || y % 10 == 0 {
                 pixel_renderer.set_pixel(x, y, Color::RGB(100, 100, 0));
             } else if x % 10 == 5 && y % 10 == 5 {
