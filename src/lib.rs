@@ -6,12 +6,13 @@ use sdl2::pixels::Color;
 pub fn draw_grid(pixel_renderer: &mut PixelRenderer) {
     use rand::Rng;
     let mut rng = rand::thread_rng();
+
+    pixel_renderer.clear_pixels(Color::RGB(0, 0, 0));
+
     for x in 0..pixel_renderer.width {
         for y in 0..pixel_renderer.height {
             if x % 10 == 0 || y % 10 == 0 {
                 pixel_renderer.set_pixel(x, y, Color::RGB(100, 100, 0));
-            } else if x % 10 == 1 || y % 10 == 1 {
-                pixel_renderer.set_pixel(x, y, Color::RGB(0, 0, 0));
             } else if x % 10 == 2 && y % 10 == 2 {
                 draw_rect(
                     pixel_renderer,

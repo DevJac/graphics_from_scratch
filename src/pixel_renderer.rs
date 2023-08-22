@@ -74,7 +74,7 @@ impl PixelRenderer {
         }
     }
 
-    pub fn set_pixel(&mut self, x: u32, y: u32, c: Color) {
+    pub fn set_pixel(&mut self, x: u32, y: u32, color: Color) {
         if x >= self.width || y >= self.height {
             return;
         }
@@ -85,9 +85,23 @@ impl PixelRenderer {
 
         // Turn the color into bytes. The correct bytes for a color depend on
         // the pixel format and the system endianness.
-        let color_bytes: &[u8; SIZE_OF_COLOR] = &c.to_u32(&self.pixel_format).to_ne_bytes();
+        let color_bytes: &[u8; SIZE_OF_COLOR] = &color.to_u32(&self.pixel_format).to_ne_bytes();
 
         self.color_buffer[i..i + SIZE_OF_COLOR].copy_from_slice(color_bytes);
+    }
+
+    pub fn clear_pixels(&mut self, color: Color) {
+        let color_bytes: &[u8; SIZE_OF_COLOR] = &color.to_u32(&self.pixel_format).to_ne_bytes();
+
+        let width: usize = self.width.try_into().unwrap();
+        let height: usize = self.height.try_into().unwrap();
+
+        for x in 0usize..width {
+            for y in 0usize..height {
+                let i = ((y * width) + x) * SIZE_OF_COLOR;
+                self.color_buffer[i..i + SIZE_OF_COLOR].copy_from_slice(color_bytes);
+            }
+        }
     }
 
     pub fn render(&mut self) {
