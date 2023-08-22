@@ -75,8 +75,9 @@ impl PixelRenderer {
     }
 
     pub fn set_pixel(&mut self, x: u32, y: u32, c: Color) {
-        assert!(x < self.width);
-        assert!(y < self.height);
+        if x >= self.width || y >= self.height {
+            return;
+        }
         let width: usize = self.width.try_into().unwrap();
         let x: usize = x.try_into().unwrap();
         let y: usize = y.try_into().unwrap();

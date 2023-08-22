@@ -10,19 +10,40 @@ pub fn draw_grid(pixel_renderer: &mut PixelRenderer) {
         for y in 0..pixel_renderer.height {
             if x % 10 == 0 || y % 10 == 0 {
                 pixel_renderer.set_pixel(x, y, Color::RGB(100, 100, 0));
-            } else if x % 10 == 5 && y % 10 == 5 {
-                pixel_renderer.set_pixel(
-                    x,
-                    y,
+            } else if x % 10 == 1 || y % 10 == 1 {
+                pixel_renderer.set_pixel(x, y, Color::RGB(0, 0, 0));
+            } else if x % 10 == 2 && y % 10 == 2 {
+                draw_rect(
+                    pixel_renderer,
+                    Rect {
+                        x,
+                        y,
+                        width: 7,
+                        height: 7,
+                    },
                     Color::RGB(
                         rng.gen_range(0..255),
                         rng.gen_range(0..255),
                         rng.gen_range(0..255),
                     ),
                 );
-            } else {
-                pixel_renderer.set_pixel(x, y, Color::RGB(0, 0, 0));
             }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct Rect {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+pub fn draw_rect(pixel_renderer: &mut PixelRenderer, rect: Rect, color: Color) {
+    for x in rect.x..(rect.x + rect.width) {
+        for y in rect.y..(rect.y + rect.height) {
+            pixel_renderer.set_pixel(x, y, color);
         }
     }
 }
