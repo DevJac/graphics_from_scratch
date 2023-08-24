@@ -5,6 +5,10 @@ use pixel_renderer::PixelRenderer;
 use sdl2::pixels::Color;
 use vec::Vec3;
 
+/////////////////////////////////////////////////////////////////
+// Junk pile - Half-baked abstractions and experiments go here //
+/////////////////////////////////////////////////////////////////
+
 pub fn draw_grid(pixel_renderer: &mut PixelRenderer) {
     use rand::Rng;
     let mut rng = rand::thread_rng();
@@ -67,8 +71,10 @@ pub fn draw_point_cube(pixel_renderer: &mut PixelRenderer) {
 
     pixel_renderer.clear_pixels(Color::RGB(0, 0, 0));
     for p in points {
-        let centered_x = (p.x * 128.0 + (pixel_renderer.width / 2) as f32).round() as u32;
-        let centered_y = (p.y * 128.0 + (pixel_renderer.height / 2) as f32).round() as u32;
+        let half_width: f32 = pixel_renderer.width as f32 / 2.0;
+        let half_height: f32 = pixel_renderer.height as f32 / 2.0;
+        let centered_x = (p.x / (p.z + 5.0) * 600.0 + half_width).round() as u32;
+        let centered_y = (p.y / (p.z + 5.0) * 600.0 + half_height).round() as u32;
         if centered_x > 0 && centered_y > 0 {
             pixel_renderer.set_pixel(centered_x, centered_y, Color::RGB(255, 255, 0));
         }
