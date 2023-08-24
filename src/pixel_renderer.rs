@@ -48,7 +48,7 @@ impl PixelRenderer {
             .present_vsync()
             .build()
             .unwrap();
-        let pixel_count: usize = (width * height).try_into().unwrap();
+        let pixel_count: usize = (width * height) as usize;
         let color_buffer: Box<[u8]> = vec![0u8; pixel_count * SIZE_OF_COLOR].into_boxed_slice();
         // Unsafe: We will manage the life of texture_creator and color_texture ourselves.
         // We will keep them together in this struct and eventually drop them together.
@@ -78,10 +78,8 @@ impl PixelRenderer {
         if x >= self.width || y >= self.height {
             return;
         }
-        let width: usize = self.width.try_into().unwrap();
-        let x: usize = x.try_into().unwrap();
-        let y: usize = y.try_into().unwrap();
-        let i = ((y * width) + x) * SIZE_OF_COLOR;
+
+        let i = ((y * self.width) + x) as usize * SIZE_OF_COLOR;
 
         // Turn the color into bytes. The correct bytes for a color depend on
         // the pixel format and the system endianness.
@@ -93,11 +91,11 @@ impl PixelRenderer {
     pub fn clear_pixels(&mut self, color: Color) {
         let color_bytes: &[u8; SIZE_OF_COLOR] = &color.to_u32(&self.pixel_format).to_ne_bytes();
 
-        let width: usize = self.width.try_into().unwrap();
-        let height: usize = self.height.try_into().unwrap();
+        let width: usize = self.width as usize;
+        let height: usize = self.height as usize;
 
-        for x in 0usize..width {
-            for y in 0usize..height {
+        for x in 0_usize..width {
+            for y in 0_usize..height {
                 let i = ((y * width) + x) * SIZE_OF_COLOR;
                 self.color_buffer[i..i + SIZE_OF_COLOR].copy_from_slice(color_bytes);
             }
@@ -105,8 +103,7 @@ impl PixelRenderer {
     }
 
     pub fn render(&mut self) {
-        let width: usize = self.width.try_into().unwrap();
-        let pitch: usize = width * SIZE_OF_COLOR;
+        let pitch: usize = self.width as usize * SIZE_OF_COLOR;
 
         unsafe { &mut *self.color_texture }
             .update(None, &self.color_buffer, pitch)
