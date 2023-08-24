@@ -48,6 +48,28 @@ impl PixelRenderer {
             .present_vsync()
             .build()
             .unwrap();
+        PixelRenderer::new_buffers_and_textures(width, height, context, canvas)
+    }
+
+    pub fn new_for_benchmark(width: u32, height: u32) -> Self {
+        let context = sdl2::init().unwrap();
+        let window = context
+            .video()
+            .unwrap()
+            .window("Renderer", width, height)
+            .hidden()
+            .build()
+            .unwrap();
+        let canvas = window.into_canvas().accelerated().build().unwrap();
+        PixelRenderer::new_buffers_and_textures(width, height, context, canvas)
+    }
+
+    fn new_buffers_and_textures(
+        width: u32,
+        height: u32,
+        context: sdl2::Sdl,
+        canvas: Canvas<Window>,
+    ) -> Self {
         let pixel_count: usize = (width * height) as usize;
         let color_buffer: Box<[u8]> = vec![0u8; pixel_count * SIZE_OF_COLOR].into_boxed_slice();
         // Unsafe: We will manage the life of texture_creator and color_texture ourselves.

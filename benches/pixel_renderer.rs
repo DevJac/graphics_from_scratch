@@ -4,7 +4,7 @@ use sdl2::pixels::Color;
 fn pixel_renderer_bench(c: &mut criterion::Criterion) {
     let width = 1000;
     let height = 1000;
-    let mut pixel_renderer = PixelRenderer::new(width, height);
+    let mut pixel_renderer = PixelRenderer::new_for_benchmark(width, height);
 
     let mut bench_group = c.benchmark_group("pixel_renderer");
 
