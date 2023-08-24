@@ -1,9 +1,11 @@
-use graphics_from_scratch::draw_grid;
+use graphics_from_scratch::draw_point_cube;
 use graphics_from_scratch::pixel_renderer::PixelRenderer;
 
 fn main() {
-    let width = 3440 / 2;
-    let height = 1440 / 2;
+    let width = 860;
+    let height = 360;
+    assert!(width == 3440 / 4);
+    assert!(height == 1440 / 4);
     let mut pixel_renderer = PixelRenderer::new(width, height);
     'main_loop: loop {
         for event in pixel_renderer.context.event_pump().unwrap().poll_iter() {
@@ -17,7 +19,7 @@ fn main() {
             }
         }
 
-        draw_grid(&mut pixel_renderer);
+        draw_point_cube(&mut pixel_renderer);
         pixel_renderer.render();
     }
 }
