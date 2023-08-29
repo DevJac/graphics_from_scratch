@@ -11,5 +11,5 @@ rand = "0.8.5"
 sdl2 = "0.35.2"
 
 [[bench]]
-name = "pixel_renderer"
+name = "benches"
 harness = false
