@@ -97,6 +97,7 @@ pub fn draw_point_cube(pixel_renderer: &mut PixelRenderer) {
 
                     draw_line(pixel_renderer, pa.x, pa.y, pb.x, pb.y);
                     draw_line(pixel_renderer, pb.x, pb.y, pc.x, pc.y);
+                    draw_line(pixel_renderer, pc.x, pc.y, pa.x, pa.y);
                 }
             })
         })
