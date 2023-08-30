@@ -104,22 +104,61 @@ pub fn draw_point_cube(pixel_renderer: &mut PixelRenderer) {
 }
 
 pub fn draw_line(pixel_renderer: &mut PixelRenderer, x0: f32, y0: f32, x1: f32, y1: f32) {
-    let delta_x: f32 = x1 - x0;
-    let delta_y: f32 = y1 - y0;
-
-    // The absolute values must be positive, so we can convert to u32.
-    let steps: u32 = f32::max(delta_x.abs(), delta_y.abs()).round() as u32;
-
     let color = Color::RGB(150, 150, 255);
 
-    pixel_renderer.set_pixel(x0.round() as u32, y0.round() as u32, color);
+    let mut x0: i32 = x0.round() as i32;
+    let mut y0: i32 = y0.round() as i32;
+    let x1: i32 = x1.round() as i32;
+    let y1: i32 = y1.round() as i32;
 
-    for step in 1..steps {
-        let ray_scale: f32 = step as f32 / steps as f32;
-        let target_x = (x0 + ray_scale * delta_x).round();
-        let target_y = (y0 + ray_scale * delta_y).round();
-        if target_x > 0.0 && target_y > 0.0 {
-            pixel_renderer.set_pixel(target_x as u32, target_y as u32, color);
+    let delta_x = x1 - x0;
+    let delta_x_abs = delta_x.abs();
+    let delta_y = y1 - y0;
+    let delta_y_abs = delta_y.abs();
+
+    let mut accumulated_error = 0;
+
+    if delta_x_abs > delta_y_abs {
+        loop {
+            pixel_renderer.set_pixel(x0 as u32, y0 as u32, color);
+            if x0 == x1 {
+                break;
+            }
+            if delta_x > 0 {
+                x0 += 1;
+            } else {
+                x0 -= 1;
+            }
+            accumulated_error += delta_y_abs;
+            if (accumulated_error + accumulated_error) > delta_x_abs {
+                accumulated_error -= delta_x_abs;
+                if delta_y > 0 {
+                    y0 += 1;
+                } else {
+                    y0 -= 1;
+                }
+            }
+        }
+    } else {
+        loop {
+            pixel_renderer.set_pixel(x0 as u32, y0 as u32, color);
+            if y0 == y1 {
+                break;
+            }
+            if delta_y > 0 {
+                y0 += 1;
+            } else {
+                y0 -= 1;
+            }
+            accumulated_error += delta_x_abs;
+            if (accumulated_error + accumulated_error) > delta_y_abs {
+                accumulated_error -= delta_y_abs;
+                if delta_x > 0 {
+                    x0 += 1;
+                } else {
+                    x0 -= 1;
+                }
+            }
         }
     }
 }
