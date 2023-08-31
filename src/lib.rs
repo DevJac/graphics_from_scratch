@@ -13,42 +13,38 @@ fn rotate(x: f32, y: f32, angle_degrees: f32) -> (f32, f32) {
     (x * cos_a - y * sin_a, x * sin_a + y * cos_a)
 }
 
-static POINTS: [Vec3; 8] = [
-    Vec3::new(1.0, 1.0, -1.0),
-    Vec3::new(1.0, -1.0, -1.0),
-    Vec3::new(-1.0, -1.0, -1.0),
-    Vec3::new(-1.0, 1.0, -1.0),
-    Vec3::new(-1.0, 1.0, 1.0),
-    Vec3::new(-1.0, -1.0, 1.0),
-    Vec3::new(1.0, -1.0, 1.0),
-    Vec3::new(1.0, 1.0, 1.0),
-];
-
-static FACES: [Face; 12] = [
-    // Front
-    Face::new(0, 1, 2),
-    Face::new(2, 3, 0),
-    // Back
-    Face::new(4, 5, 6),
-    Face::new(6, 7, 4),
-    // Left
-    Face::new(0, 3, 4),
-    Face::new(4, 7, 0),
-    // Right
-    Face::new(2, 1, 6),
-    Face::new(6, 5, 2),
-    // Top
-    Face::new(2, 5, 4),
-    Face::new(4, 3, 2),
-    // Bottom
-    Face::new(0, 7, 6),
-    Face::new(6, 1, 0),
-];
-
 pub fn get_cube_mesh() -> Mesh {
+    use std::fs::File;
+    use std::io::{BufRead, BufReader};
+
+    let mut vertices: Vec<Vec3> = Vec::new();
+    let mut faces: Vec<Face> = Vec::new();
+
+    let file = File::open("./assets/f22.obj").unwrap();
+    let reader = BufReader::new(file);
+
+    for line in reader.lines() {
+        let line = line.unwrap();
+        let words: Vec<&str> = line.split_whitespace().collect();
+        if words.len() == 4 {
+            if words[0] == "v" {
+                vertices.push(Vec3::new(
+                    words[1].parse().unwrap(),
+                    words[2].parse().unwrap(),
+                    words[3].parse().unwrap(),
+                ));
+            }
+            if words[0] == "f" {
+                let a: usize = words[1].split('/').next().unwrap().parse().unwrap();
+                let b: usize = words[2].split('/').next().unwrap().parse().unwrap();
+                let c: usize = words[3].split('/').next().unwrap().parse().unwrap();
+                faces.push(Face::new(a - 1, b - 1, c - 1));
+            }
+        }
+    }
     Mesh {
-        vertices: POINTS.to_vec(),
-        faces: FACES.to_vec(),
+        vertices,
+        faces,
         rotation: Vec3::new(0.0, 0.0, 0.0),
     }
 }
