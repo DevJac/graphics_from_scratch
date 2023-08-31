@@ -1,10 +1,11 @@
+pub mod mesh;
 pub mod pixel_renderer;
 pub mod vec;
 
+use mesh::{Face, Mesh};
 use pixel_renderer::PixelRenderer;
 use rand::Rng;
 use sdl2::pixels::Color;
-use std::cell::RefCell;
 use vec::{Vec2, Vec3};
 
 fn rotate(x: f32, y: f32, angle_degrees: f32) -> (f32, f32) {
@@ -12,20 +13,7 @@ fn rotate(x: f32, y: f32, angle_degrees: f32) -> (f32, f32) {
     (x * cos_a - y * sin_a, x * sin_a + y * cos_a)
 }
 
-struct Face {
-    a: usize,
-    b: usize,
-    c: usize,
-}
-
-impl Face {
-    pub const fn new(a: usize, b: usize, c: usize) -> Self {
-        Self { a, b, c }
-    }
-}
-
-thread_local! {
-    static POINTS: RefCell<Vec<Vec3>> = RefCell::new(vec![
+static POINTS: [Vec3; 8] = [
     Vec3::new(1.0, 1.0, -1.0),
     Vec3::new(1.0, -1.0, -1.0),
     Vec3::new(-1.0, -1.0, -1.0),
@@ -34,9 +22,9 @@ thread_local! {
     Vec3::new(-1.0, -1.0, 1.0),
     Vec3::new(1.0, -1.0, 1.0),
     Vec3::new(1.0, 1.0, 1.0),
-    ]);
+];
 
-    static FACES: RefCell<Vec<Face>> = RefCell::new(vec![
+static FACES: [Face; 12] = [
     // Front
     Face::new(0, 1, 2),
     Face::new(2, 3, 0),
@@ -55,9 +43,14 @@ thread_local! {
     // Bottom
     Face::new(0, 7, 6),
     Face::new(6, 1, 0),
-    ]);
+];
 
-    static ROTATION: RefCell<Vec3> = RefCell::new(Vec3::new(0.0, 0.0, 0.0));
+pub fn get_cube_mesh() -> Mesh {
+    Mesh {
+        vertices: POINTS.to_vec(),
+        faces: FACES.to_vec(),
+        rotation: Vec3::new(0.0, 0.0, 0.0),
+    }
 }
 
 fn project_point(pixel_renderer: &mut PixelRenderer, p: Vec3) -> Vec2 {
@@ -70,38 +63,32 @@ fn project_point(pixel_renderer: &mut PixelRenderer, p: Vec3) -> Vec2 {
     Vec2::new(centered_x, centered_y)
 }
 
-pub fn draw_point_cube(pixel_renderer: &mut PixelRenderer) {
+pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, mesh: &mut Mesh) {
     let mut rng = rand::thread_rng();
-    ROTATION.with(|rotation| {
-        POINTS.with(|points| {
-            FACES.with(|faces| {
-                let mut r = rotation.borrow_mut();
-                r.x = r.x * 0.9999 + rng.gen_range(-0.03..0.03);
-                r.y = r.y * 0.9999 + rng.gen_range(-0.03..0.03);
-                r.z = r.z * 0.9999 + rng.gen_range(-0.03..0.03);
-                for p in points.borrow_mut().iter_mut() {
-                    let (rot_x, rot_y) = rotate(p.x, p.y, r.z);
-                    let (rot_x, rot_z) = rotate(rot_x, p.z, r.y);
-                    let (rot_y, rot_z) = rotate(rot_y, rot_z, r.x);
-                    p.x = rot_x;
-                    p.y = rot_y;
-                    p.z = rot_z;
-                }
+    mesh.rotation.x = mesh.rotation.x * 0.9999 + rng.gen_range(-0.03..0.03);
+    mesh.rotation.y = mesh.rotation.y * 0.9999 + rng.gen_range(-0.03..0.03);
+    mesh.rotation.z = mesh.rotation.z * 0.9999 + rng.gen_range(-0.03..0.03);
 
-                pixel_renderer.clear_pixels(Color::RGB(0, 0, 0));
+    for p in mesh.vertices.iter_mut() {
+        let (rot_x, rot_y) = rotate(p.x, p.y, mesh.rotation.z);
+        let (rot_x, rot_z) = rotate(rot_x, p.z, mesh.rotation.y);
+        let (rot_y, rot_z) = rotate(rot_y, rot_z, mesh.rotation.x);
+        p.x = rot_x;
+        p.y = rot_y;
+        p.z = rot_z;
+    }
 
-                for face in faces.borrow().iter() {
-                    let pa = project_point(pixel_renderer, points.borrow()[face.a]);
-                    let pb = project_point(pixel_renderer, points.borrow()[face.b]);
-                    let pc = project_point(pixel_renderer, points.borrow()[face.c]);
+    pixel_renderer.clear_pixels(Color::RGB(0, 0, 0));
 
-                    draw_line(pixel_renderer, pa.x, pa.y, pb.x, pb.y);
-                    draw_line(pixel_renderer, pb.x, pb.y, pc.x, pc.y);
-                    draw_line(pixel_renderer, pc.x, pc.y, pa.x, pa.y);
-                }
-            })
-        })
-    });
+    for face in mesh.faces.iter() {
+        let pa = project_point(pixel_renderer, mesh.vertices[face.a]);
+        let pb = project_point(pixel_renderer, mesh.vertices[face.b]);
+        let pc = project_point(pixel_renderer, mesh.vertices[face.c]);
+
+        draw_line(pixel_renderer, pa.x, pa.y, pb.x, pb.y);
+        draw_line(pixel_renderer, pb.x, pb.y, pc.x, pc.y);
+        draw_line(pixel_renderer, pc.x, pc.y, pa.x, pa.y);
+    }
 }
 
 pub fn draw_line(pixel_renderer: &mut PixelRenderer, x0: f32, y0: f32, x1: f32, y1: f32) {

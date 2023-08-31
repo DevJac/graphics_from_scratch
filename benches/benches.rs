@@ -1,16 +1,17 @@
 use graphics_from_scratch::pixel_renderer::PixelRenderer;
-use graphics_from_scratch::{draw_line, draw_point_cube};
+use graphics_from_scratch::{draw_line, draw_mesh, get_cube_mesh};
 use sdl2::pixels::Color;
 
 fn rendering_benchmarks(c: &mut criterion::Criterion) {
     let width = 1000;
     let height = 1000;
+    let mut cube_mesh = get_cube_mesh();
     let mut pixel_renderer = PixelRenderer::new_for_benchmark(width, height);
 
     ////////////////////////////////////////////
     // Pixel Renderer benchmarks
     ////////////////////////////////////////////
-    let mut bench_group = c.benchmark_group("pixel_renderer");
+    let mut bench_group = c.benchmark_group("PixelRenderer");
 
     bench_group.bench_function("set_pixel", |b| {
         b.iter(|| {
@@ -35,11 +36,11 @@ fn rendering_benchmarks(c: &mut criterion::Criterion) {
     ////////////////////////////////////////////
     // Point cube benchmarks
     ////////////////////////////////////////////
-    let mut bench_group = c.benchmark_group("point_cube");
+    let mut bench_group = c.benchmark_group("draw");
 
-    bench_group.bench_function("draw_point_cube", |b| {
+    bench_group.bench_function("draw_mesh", |b| {
         b.iter(|| {
-            draw_point_cube(&mut pixel_renderer);
+            draw_mesh(&mut pixel_renderer, &mut cube_mesh);
         })
     });
 
