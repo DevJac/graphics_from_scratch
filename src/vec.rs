@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Vec2 {
@@ -47,6 +47,40 @@ impl SubAssign for Vec2 {
     fn sub_assign(&mut self, other: Self) {
         self.x -= other.x;
         self.y -= other.y;
+    }
+}
+
+impl Mul<f32> for Vec2 {
+    type Output = Self;
+
+    fn mul(self, other: f32) -> Self {
+        let x = self.x * other;
+        let y = self.y * other;
+        Self { x, y }
+    }
+}
+
+impl MulAssign<f32> for Vec2 {
+    fn mul_assign(&mut self, other: f32) {
+        self.x *= other;
+        self.y *= other;
+    }
+}
+
+impl Div<f32> for Vec2 {
+    type Output = Self;
+
+    fn div(self, other: f32) -> Self {
+        let x = self.x / other;
+        let y = self.y / other;
+        Self { x, y }
+    }
+}
+
+impl DivAssign<f32> for Vec2 {
+    fn div_assign(&mut self, other: f32) {
+        self.x /= other;
+        self.y /= other;
     }
 }
 
@@ -105,6 +139,44 @@ impl SubAssign for Vec3 {
     }
 }
 
+impl Mul<f32> for Vec3 {
+    type Output = Self;
+
+    fn mul(self, other: f32) -> Self {
+        let x = self.x * other;
+        let y = self.y * other;
+        let z = self.z * other;
+        Self { x, y, z }
+    }
+}
+
+impl MulAssign<f32> for Vec3 {
+    fn mul_assign(&mut self, other: f32) {
+        self.x *= other;
+        self.y *= other;
+        self.z *= other;
+    }
+}
+
+impl Div<f32> for Vec3 {
+    type Output = Self;
+
+    fn div(self, other: f32) -> Self {
+        let x = self.x / other;
+        let y = self.y / other;
+        let z = self.z / other;
+        Self { x, y, z }
+    }
+}
+
+impl DivAssign<f32> for Vec3 {
+    fn div_assign(&mut self, other: f32) {
+        self.x /= other;
+        self.y /= other;
+        self.z /= other;
+    }
+}
+
 #[test]
 fn test_vec_len() {
     let v2 = Vec2::new(3.0, 4.0);
@@ -137,4 +209,40 @@ fn test_vec_add_sub() {
 
     assert!(a == Vec2::new(4.0, 6.0));
     assert!(c == Vec3::new(5.0, 7.0, 9.0));
+
+    a -= b;
+    c -= d;
+
+    assert!(a == Vec2::new(1.0, 2.0));
+    assert!(c == Vec3::new(1.0, 2.0, 3.0));
+}
+
+#[test]
+fn test_vec_mul_div() {
+    let mut a = Vec2::new(1.0, 2.0);
+    let mut b = Vec3::new(1.0, 2.0, 3.0);
+    let mut c = Vec3::new(0.0, 0.0, 0.0);
+
+    assert!(a * 1.5 == Vec2::new(1.5, 3.0));
+    assert!(b * 1.5 == Vec3::new(1.5, 3.0, 4.5));
+    assert!(c * 1.5 == Vec3::new(0.0, 0.0, 0.0));
+    assert!((a * 1.5) / 1.5 == Vec2::new(1.0, 2.0));
+    assert!((b * 1.5) / 1.5 == Vec3::new(1.0, 2.0, 3.0));
+    assert!((c * 1.5) / 1.5 == Vec3::new(0.0, 0.0, 0.0));
+
+    a *= 2.0;
+    b *= 2.0;
+    c *= 2.0;
+
+    assert!(a == Vec2::new(2.0, 4.0));
+    assert!(b == Vec3::new(2.0, 4.0, 6.0));
+    assert!(c == Vec3::new(0.0, 0.0, 0.0));
+
+    a /= 2.0;
+    b /= 2.0;
+    c /= 2.0;
+
+    assert!(a == Vec2::new(1.0, 2.0));
+    assert!(b == Vec3::new(1.0, 2.0, 3.0));
+    assert!(c == Vec3::new(0.0, 0.0, 0.0));
 }
