@@ -1,4 +1,4 @@
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Vec2 {
@@ -26,6 +26,13 @@ impl Add for Vec2 {
     }
 }
 
+impl AddAssign for Vec2 {
+    fn add_assign(&mut self, other: Self) {
+        self.x += other.x;
+        self.y += other.y;
+    }
+}
+
 impl Sub for Vec2 {
     type Output = Self;
 
@@ -33,6 +40,13 @@ impl Sub for Vec2 {
         let x = self.x - other.x;
         let y = self.y - other.y;
         Self { x, y }
+    }
+}
+
+impl SubAssign for Vec2 {
+    fn sub_assign(&mut self, other: Self) {
+        self.x -= other.x;
+        self.y -= other.y;
     }
 }
 
@@ -64,6 +78,14 @@ impl Add for Vec3 {
     }
 }
 
+impl AddAssign for Vec3 {
+    fn add_assign(&mut self, other: Self) {
+        self.x += other.x;
+        self.y += other.y;
+        self.z += other.z;
+    }
+}
+
 impl Sub for Vec3 {
     type Output = Self;
 
@@ -72,6 +94,14 @@ impl Sub for Vec3 {
         let y = self.y - other.y;
         let z = self.z - other.z;
         Self { x, y, z }
+    }
+}
+
+impl SubAssign for Vec3 {
+    fn sub_assign(&mut self, other: Self) {
+        self.x -= other.x;
+        self.y -= other.y;
+        self.z -= other.z;
     }
 }
 
@@ -90,9 +120,9 @@ fn test_vec_len() {
 
 #[test]
 fn test_vec_add_sub() {
-    let a = Vec2::new(1.0, 2.0);
+    let mut a = Vec2::new(1.0, 2.0);
     let b = Vec2::new(3.0, 4.0);
-    let c = Vec3::new(1.0, 2.0, 3.0);
+    let mut c = Vec3::new(1.0, 2.0, 3.0);
     let d = Vec3::new(4.0, 5.0, 6.0);
     let e = Vec3::new(0.0, 0.0, 0.0);
 
@@ -101,4 +131,10 @@ fn test_vec_add_sub() {
     assert!(c + d == Vec3::new(5.0, 7.0, 9.0));
     assert!(c - d == Vec3::new(-3.0, -3.0, -3.0));
     assert!(d - e == d);
+
+    a += b;
+    c += d;
+
+    assert!(a == Vec2::new(4.0, 6.0));
+    assert!(c == Vec3::new(5.0, 7.0, 9.0));
 }
