@@ -14,6 +14,10 @@ impl Vec2 {
     pub fn len(&self) -> f32 {
         (self.x.powi(2) + self.y.powi(2)).sqrt()
     }
+
+    pub fn dot(&self, other: Self) -> f32 {
+        self.x * other.x + self.y * other.y
+    }
 }
 
 impl Add for Vec2 {
@@ -105,6 +109,10 @@ impl Vec3 {
         let y = self.z * other.x - self.x * other.z;
         let z = self.x * other.y - self.y * other.x;
         Self { x, y, z }
+    }
+
+    pub fn dot(&self, other: Self) -> f32 {
+        self.x * other.x + self.y * other.y + self.z * other.z
     }
 }
 
@@ -271,4 +279,15 @@ fn test_vec3_cross() {
 
     assert!(a.cross(b) == Vec3::new(0.0, 0.0, 2.0));
     assert!(b.cross(a) == Vec3::new(0.0, 0.0, -2.0));
+}
+
+#[test]
+fn test_vec_dot() {
+    assert!(Vec2::new(1.0, 0.0).dot(Vec2::new(0.0, 1.0)) == 0.0);
+    assert!(Vec2::new(1.0, 1.0).dot(Vec2::new(0.0, 1.0)) == 1.0);
+    assert!(Vec2::new(2.0, 1.0).dot(Vec2::new(0.0, 1.0)) == 1.0);
+
+    assert!(Vec3::new(1.0, 0.0, 0.0).dot(Vec3::new(0.0, 1.0, 0.0)) == 0.0);
+    assert!(Vec3::new(1.0, 1.0, 1.0).dot(Vec3::new(0.0, 1.0, 1.0)) == 2.0);
+    assert!(Vec3::new(0.0, 0.0, 4.0).dot(Vec3::new(0.0, 0.0, 5.0)) == 20.0);
 }
