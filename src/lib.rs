@@ -8,6 +8,9 @@ use rand::Rng;
 use sdl2::pixels::Color;
 use vec::{Vec2, Vec3};
 
+const CAMERA_DIST: f32 = 5.0;
+const SCALE: f32 = 400.0;
+
 fn rotate(x: f32, y: f32, angle_degrees: f32) -> (f32, f32) {
     let (sin_a, cos_a) = angle_degrees.to_radians().sin_cos();
     (x * cos_a - y * sin_a, x * sin_a + y * cos_a)
@@ -20,7 +23,7 @@ pub fn get_cube_mesh() -> Mesh {
     let mut vertices: Vec<Vec3> = Vec::new();
     let mut faces: Vec<Face> = Vec::new();
 
-    let file = File::open("./assets/f22.obj").unwrap();
+    let file = File::open("./assets/cube.obj").unwrap();
     let reader = BufReader::new(file);
 
     for line in reader.lines() {
@@ -49,13 +52,11 @@ pub fn get_cube_mesh() -> Mesh {
     }
 }
 
-fn project_point(pixel_renderer: &mut PixelRenderer, p: Vec3) -> Vec2 {
+fn project_point_to_screen_space(pixel_renderer: &mut PixelRenderer, p: Vec3) -> Vec2 {
     let half_width: f32 = pixel_renderer.width as f32 / 2.0;
     let half_height: f32 = pixel_renderer.height as f32 / 2.0;
-    let camera_dist = 5.0;
-    let scale = 400.0;
-    let centered_x = p.x / (p.z + camera_dist) * scale + half_width;
-    let centered_y = p.y / (p.z + camera_dist) * scale + half_height;
+    let centered_x = p.x / (p.z + CAMERA_DIST) * SCALE + half_width;
+    let centered_y = p.y / (p.z + CAMERA_DIST) * SCALE + half_height;
     Vec2::new(centered_x, centered_y)
 }
 
@@ -77,9 +78,29 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, mesh: &mut Mesh) {
     pixel_renderer.clear_pixels(Color::RGB(0, 0, 0));
 
     for face in mesh.faces.iter() {
-        let pa = project_point(pixel_renderer, mesh.vertices[face.a]);
-        let pb = project_point(pixel_renderer, mesh.vertices[face.b]);
-        let pc = project_point(pixel_renderer, mesh.vertices[face.c]);
+        let vert_a = mesh.vertices[face.a];
+        let vert_b = mesh.vertices[face.b];
+        let vert_c = mesh.vertices[face.c];
+
+        let face_normal = (vert_b - vert_a).cross(vert_c - vert_a);
+        let vec_to_camera = Vec3::new(0.0, 0.0, -CAMERA_DIST) - vert_a;
+        let vec_to_camera_b = Vec3::new(0.0, 0.0, -CAMERA_DIST) - vert_b;
+        let vec_to_camera_c = Vec3::new(0.0, 0.0, -CAMERA_DIST) - vert_c;
+        assert!(
+            face_normal.dot(vec_to_camera).is_sign_positive()
+                == face_normal.dot(vec_to_camera_b).is_sign_positive()
+        );
+        assert!(
+            face_normal.dot(vec_to_camera).is_sign_positive()
+                == face_normal.dot(vec_to_camera_c).is_sign_positive()
+        );
+        if face_normal.dot(vec_to_camera) < 0.0 {
+            continue;
+        }
+
+        let pa = project_point_to_screen_space(pixel_renderer, vert_a);
+        let pb = project_point_to_screen_space(pixel_renderer, vert_b);
+        let pc = project_point_to_screen_space(pixel_renderer, vert_c);
 
         draw_line(pixel_renderer, pa.x, pa.y, pb.x, pb.y);
         draw_line(pixel_renderer, pb.x, pb.y, pc.x, pc.y);
