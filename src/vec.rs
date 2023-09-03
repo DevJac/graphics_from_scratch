@@ -99,6 +99,13 @@ impl Vec3 {
     pub fn len(&self) -> f32 {
         (self.x.powi(2) + self.y.powi(2) + self.z.powi(2)).sqrt()
     }
+
+    pub fn cross(&self, other: Self) -> Self {
+        let x = self.y * other.z - self.z * other.y;
+        let y = self.z * other.x - self.x * other.z;
+        let z = self.x * other.y - self.y * other.x;
+        Self { x, y, z }
+    }
 }
 
 impl Add for Vec3 {
@@ -245,4 +252,23 @@ fn test_vec_mul_div() {
     assert!(a == Vec2::new(1.0, 2.0));
     assert!(b == Vec3::new(1.0, 2.0, 3.0));
     assert!(c == Vec3::new(0.0, 0.0, 0.0));
+}
+
+#[test]
+fn test_vec3_cross() {
+    let a = Vec3::new(1.0, 0.0, 0.0);
+    let b = Vec3::new(0.0, 1.0, 0.0);
+
+    assert!(a.cross(b) == Vec3::new(0.0, 0.0, 1.0));
+
+    let a = Vec3::new(1.5, 2.5, -1.0);
+    let b = Vec3::new(2.0, -3.0, 4.0);
+
+    assert!(a.cross(b) == Vec3::new(7.0, -8.0, -9.5));
+
+    let a = Vec3::new(1.0, 0.0, 0.0);
+    let b = Vec3::new(2.0, 2.0, 0.0);
+
+    assert!(a.cross(b) == Vec3::new(0.0, 0.0, 2.0));
+    assert!(b.cross(a) == Vec3::new(0.0, 0.0, -2.0));
 }
