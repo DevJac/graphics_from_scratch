@@ -18,6 +18,14 @@ impl Vec2 {
     pub fn dot(&self, other: Self) -> f32 {
         self.x * other.x + self.y * other.y
     }
+
+    pub fn unit_norm(&self) -> Self {
+        let len = self.len();
+        Self {
+            x: self.x / len,
+            y: self.y / len,
+        }
+    }
 }
 
 impl Add for Vec2 {
@@ -113,6 +121,15 @@ impl Vec3 {
 
     pub fn dot(&self, other: Self) -> f32 {
         self.x * other.x + self.y * other.y + self.z * other.z
+    }
+
+    pub fn unit_norm(&self) -> Self {
+        let len = self.len();
+        Self {
+            x: self.x / len,
+            y: self.y / len,
+            z: self.z / len,
+        }
     }
 }
 
@@ -290,4 +307,17 @@ fn test_vec_dot() {
     assert!(Vec3::new(1.0, 0.0, 0.0).dot(Vec3::new(0.0, 1.0, 0.0)) == 0.0);
     assert!(Vec3::new(1.0, 1.0, 1.0).dot(Vec3::new(0.0, 1.0, 1.0)) == 2.0);
     assert!(Vec3::new(0.0, 0.0, 4.0).dot(Vec3::new(0.0, 0.0, 5.0)) == 20.0);
+}
+
+#[test]
+fn test_vec_unit_norm() {
+    assert!(Vec2::new(1.0, 0.0).unit_norm() == Vec2::new(1.0, 0.0));
+    assert!(Vec2::new(2.0, 0.0).unit_norm() == Vec2::new(1.0, 0.0));
+    assert!(Vec2::new(2.0, 2.0).unit_norm() == Vec2::new(0.70710677, 0.70710677));
+
+    assert!(Vec3::new(1.0, 0.0, 0.0).unit_norm() == Vec3::new(1.0, 0.0, 0.0));
+    assert!(Vec3::new(2.0, 0.0, 0.0).unit_norm() == Vec3::new(1.0, 0.0, 0.0));
+    assert!(Vec3::new(2.0, 2.0, 0.0).unit_norm() == Vec3::new(0.70710677, 0.70710677, 0.0));
+    assert!(Vec3::new(0.0, 0.0, 1.0).unit_norm() == Vec3::new(0.0, 0.0, 1.0));
+    assert!(Vec3::new(2.0, 2.0, 1.0).unit_norm() == Vec3::new(0.66666666, 0.66666666, 0.33333333));
 }
