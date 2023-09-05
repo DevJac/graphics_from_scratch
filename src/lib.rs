@@ -77,9 +77,7 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, mesh: &mut Mesh) {
 
     pixel_renderer.clear_pixels(Color::RGB(0, 0, 0));
 
-    mesh.faces.shuffle(&mut rng);
-
-    for face in mesh.faces.iter() {
+    for face in mesh.faces.choose_multiple(&mut rng, mesh.faces.len()) {
         let vert_a = mesh.vertices[face.a];
         let vert_b = mesh.vertices[face.b];
         let vert_c = mesh.vertices[face.c];

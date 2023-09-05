@@ -46,7 +46,14 @@ fn rendering_benchmarks(c: &mut criterion::Criterion) {
 
     bench_group.bench_function("draw_line", |b| {
         b.iter(|| {
-            draw_line(&mut pixel_renderer, 100.0, 200.0, 300.0, 400.0);
+            draw_line(
+                &mut pixel_renderer,
+                Color::RGB(0, 0, 0),
+                100.0,
+                200.0,
+                300.0,
+                400.0,
+            );
         })
     });
 
