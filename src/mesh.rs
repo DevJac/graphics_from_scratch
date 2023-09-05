@@ -1,15 +1,27 @@
 use crate::vec::Vec3;
+use rand::Rng;
+use sdl2::pixels::Color;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Face {
     pub a: usize,
     pub b: usize,
     pub c: usize,
+    pub color: Color,
 }
 
 impl Face {
-    pub const fn new(a: usize, b: usize, c: usize) -> Self {
-        Self { a, b, c }
+    pub fn new(a: usize, b: usize, c: usize) -> Self {
+        let mut rng = rand::thread_rng();
+        let cr = rng.gen_range(0..255);
+        let cg = rng.gen_range(0..255);
+        let cb = rng.gen_range(0..255);
+        Self {
+            a,
+            b,
+            c,
+            color: Color::RGB(cr, cg, cb),
+        }
     }
 }
 

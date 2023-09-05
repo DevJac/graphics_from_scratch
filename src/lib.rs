@@ -4,7 +4,7 @@ pub mod vec;
 
 use mesh::{Face, Mesh};
 use pixel_renderer::PixelRenderer;
-use rand::Rng;
+use rand::{seq::SliceRandom, Rng};
 use sdl2::pixels::Color;
 use vec::{Vec2, Vec3};
 
@@ -62,9 +62,9 @@ fn project_point_to_screen_space(pixel_renderer: &mut PixelRenderer, p: Vec3) ->
 
 pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, mesh: &mut Mesh) {
     let mut rng = rand::thread_rng();
-    mesh.rotation.x = mesh.rotation.x * 0.9999 + rng.gen_range(-0.03..0.03);
-    mesh.rotation.y = mesh.rotation.y * 0.9999 + rng.gen_range(-0.03..0.03);
-    mesh.rotation.z = mesh.rotation.z * 0.9999 + rng.gen_range(-0.03..0.03);
+    mesh.rotation.x = mesh.rotation.x * 0.99 + rng.gen_range(-0.03..0.03);
+    mesh.rotation.y = mesh.rotation.y * 0.99 + rng.gen_range(-0.03..0.03);
+    mesh.rotation.z = mesh.rotation.z * 0.99 + rng.gen_range(-0.03..0.03);
 
     for p in mesh.vertices.iter_mut() {
         let (rot_x, rot_y) = rotate(p.x, p.y, mesh.rotation.z);
@@ -77,6 +77,8 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, mesh: &mut Mesh) {
 
     pixel_renderer.clear_pixels(Color::RGB(0, 0, 0));
 
+    mesh.faces.shuffle(&mut rng);
+
     for face in mesh.faces.iter() {
         let vert_a = mesh.vertices[face.a];
         let vert_b = mesh.vertices[face.b];
@@ -86,11 +88,11 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, mesh: &mut Mesh) {
         let vec_to_camera = Vec3::new(0.0, 0.0, -CAMERA_DIST) - vert_a;
         let vec_to_camera_b = Vec3::new(0.0, 0.0, -CAMERA_DIST) - vert_b;
         let vec_to_camera_c = Vec3::new(0.0, 0.0, -CAMERA_DIST) - vert_c;
-        assert!(
+        debug_assert!(
             face_normal.dot(vec_to_camera).is_sign_positive()
                 == face_normal.dot(vec_to_camera_b).is_sign_positive()
         );
-        assert!(
+        debug_assert!(
             face_normal.dot(vec_to_camera).is_sign_positive()
                 == face_normal.dot(vec_to_camera_c).is_sign_positive()
         );
@@ -102,16 +104,16 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, mesh: &mut Mesh) {
         let pb = project_point_to_screen_space(pixel_renderer, vert_b);
         let pc = project_point_to_screen_space(pixel_renderer, vert_c);
 
-        draw_triangle(pixel_renderer, pa, pb, pc);
+        draw_triangle(pixel_renderer, face.color, pa, pb, pc);
     }
 }
 
 // TODO: Use min_max. Is it faster?
-fn min_max(a: f32, b: f32, c: f32) -> (f32, f32) {
+fn min_max(a: f32, b: f32, c: f32) -> (i32, i32) {
     let min;
     let max;
 
-    if a <= b && b <= c {
+    if a <= b && a <= c {
         min = a;
     } else if b <= c {
         min = b;
@@ -119,7 +121,7 @@ fn min_max(a: f32, b: f32, c: f32) -> (f32, f32) {
         min = c;
     }
 
-    if a >= b && b >= c {
+    if a >= b && a >= c {
         max = a;
     } else if b >= c {
         max = b;
@@ -127,65 +129,42 @@ fn min_max(a: f32, b: f32, c: f32) -> (f32, f32) {
         max = c;
     }
 
-    (min, max)
+    (min.round() as i32, max.round() as i32)
 }
 
-pub fn draw_triangle(pixel_renderer: &mut PixelRenderer, a: Vec2, b: Vec2, c: Vec2) {
-    let color = Color::RGB(150, 150, 255);
+pub fn draw_triangle(pixel_renderer: &mut PixelRenderer, color: Color, a: Vec2, b: Vec2, c: Vec2) {
+    let (x_min, x_max) = min_max(a.x, b.x, c.x);
+    let (y_min, y_max) = min_max(a.y, b.y, c.y);
 
-    let verts = [&a, &b, &c];
-    let x_min: f32 = verts
-        .iter()
-        .min_by(|a, b| a.x.partial_cmp(&b.x).unwrap())
-        .unwrap()
-        .x;
-    let y_min = verts
-        .iter()
-        .min_by(|a, b| a.y.partial_cmp(&b.y).unwrap())
-        .unwrap()
-        .y;
-    let x_max = verts
-        .iter()
-        .max_by(|a, b| a.x.partial_cmp(&b.x).unwrap())
-        .unwrap()
-        .x;
-    let y_max = verts
-        .iter()
-        .max_by(|a, b| a.y.partial_cmp(&b.y).unwrap())
-        .unwrap()
-        .y;
+    let x_min = x_min.max(0);
+    let y_min = y_min.max(0);
 
     let a1 = a - c;
     let b1 = b - a;
     let c1 = c - b;
 
-    let mut x_loop = x_min;
-    loop {
-        if x_loop > x_max || x_loop < 0.0 {
-            break;
-        }
-        let mut y_loop = y_min;
-        loop {
-            if y_loop > y_max || y_loop < 0.0 {
-                break;
-            }
-            let p = Vec2::new(x_loop, y_loop);
+    for x in x_min..=x_max {
+        for y in y_min..=y_max {
+            let p = Vec2::new(x as f32, y as f32);
             let in_a = (p - a).cross_z(a1) > 0.0;
             let in_b = (p - b).cross_z(b1) > 0.0;
             let in_c = (p - c).cross_z(c1) > 0.0;
 
             if in_a && in_b && in_c {
-                pixel_renderer.set_pixel(x_loop.round() as u32, y_loop.round() as u32, color);
+                pixel_renderer.set_pixel(x as u32, y as u32, color);
             }
-            y_loop += 1.0;
         }
-        x_loop += 1.0;
     }
 }
 
-pub fn draw_line(pixel_renderer: &mut PixelRenderer, x0: f32, y0: f32, x1: f32, y1: f32) {
-    let color = Color::RGB(150, 150, 255);
-
+pub fn draw_line(
+    pixel_renderer: &mut PixelRenderer,
+    color: Color,
+    x0: f32,
+    y0: f32,
+    x1: f32,
+    y1: f32,
+) {
     let mut x0: i32 = x0.round() as i32;
     let mut y0: i32 = y0.round() as i32;
     let x1: i32 = x1.round() as i32;
