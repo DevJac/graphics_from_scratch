@@ -102,9 +102,84 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, mesh: &mut Mesh) {
         let pb = project_point_to_screen_space(pixel_renderer, vert_b);
         let pc = project_point_to_screen_space(pixel_renderer, vert_c);
 
-        draw_line(pixel_renderer, pa.x, pa.y, pb.x, pb.y);
-        draw_line(pixel_renderer, pb.x, pb.y, pc.x, pc.y);
-        draw_line(pixel_renderer, pc.x, pc.y, pa.x, pa.y);
+        draw_triangle(pixel_renderer, pa, pb, pc);
+    }
+}
+
+// TODO: Use min_max. Is it faster?
+fn min_max(a: f32, b: f32, c: f32) -> (f32, f32) {
+    let min;
+    let max;
+
+    if a <= b && b <= c {
+        min = a;
+    } else if b <= c {
+        min = b;
+    } else {
+        min = c;
+    }
+
+    if a >= b && b >= c {
+        max = a;
+    } else if b >= c {
+        max = b;
+    } else {
+        max = c;
+    }
+
+    (min, max)
+}
+
+pub fn draw_triangle(pixel_renderer: &mut PixelRenderer, a: Vec2, b: Vec2, c: Vec2) {
+    let color = Color::RGB(150, 150, 255);
+
+    let verts = [&a, &b, &c];
+    let x_min: f32 = verts
+        .iter()
+        .min_by(|a, b| a.x.partial_cmp(&b.x).unwrap())
+        .unwrap()
+        .x;
+    let y_min = verts
+        .iter()
+        .min_by(|a, b| a.y.partial_cmp(&b.y).unwrap())
+        .unwrap()
+        .y;
+    let x_max = verts
+        .iter()
+        .max_by(|a, b| a.x.partial_cmp(&b.x).unwrap())
+        .unwrap()
+        .x;
+    let y_max = verts
+        .iter()
+        .max_by(|a, b| a.y.partial_cmp(&b.y).unwrap())
+        .unwrap()
+        .y;
+
+    let a1 = a - c;
+    let b1 = b - a;
+    let c1 = c - b;
+
+    let mut x_loop = x_min;
+    loop {
+        if x_loop > x_max || x_loop < 0.0 {
+            break;
+        }
+        let mut y_loop = y_min;
+        loop {
+            if y_loop > y_max || y_loop < 0.0 {
+                break;
+            }
+            let p = Vec2::new(x_loop, y_loop);
+            let in_a = (p - a).cross_z(a1) > 0.0;
+            let in_b = (p - b).cross_z(b1) > 0.0;
+            let in_c = (p - c).cross_z(c1) > 0.0;
+
+            if in_a && in_b && in_c {
+                pixel_renderer.set_pixel(x_loop.round() as u32, y_loop.round() as u32, color);
+            }
+            y_loop += 1.0;
+        }
+        x_loop += 1.0;
     }
 }
 
