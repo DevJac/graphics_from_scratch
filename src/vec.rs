@@ -15,6 +15,11 @@ impl Vec2 {
         (self.x.powi(2) + self.y.powi(2)).sqrt()
     }
 
+    pub fn cross_z(&self, other: Self) -> f32 {
+        let z = self.x * other.y - self.y * other.x;
+        z
+    }
+
     pub fn dot(&self, other: Self) -> f32 {
         self.x * other.x + self.y * other.y
     }
@@ -277,6 +282,21 @@ fn test_vec_mul_div() {
     assert!(a == Vec2::new(1.0, 2.0));
     assert!(b == Vec3::new(1.0, 2.0, 3.0));
     assert!(c == Vec3::new(0.0, 0.0, 0.0));
+}
+
+#[test]
+fn test_vec2_cross_z() {
+    let a = Vec2::new(1.0, 0.0);
+    let b = Vec2::new(0.0, 1.0);
+
+    assert!(a.cross_z(b) == 1.0);
+    assert!(b.cross_z(a) == -1.0);
+
+    let a = Vec2::new(1.0, 0.0);
+    let b = Vec2::new(2.0, 2.0);
+
+    assert!(a.cross_z(b) == 2.0);
+    assert!(b.cross_z(a) == -2.0);
 }
 
 #[test]
