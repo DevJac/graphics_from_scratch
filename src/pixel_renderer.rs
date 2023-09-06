@@ -116,10 +116,11 @@ impl PixelRenderer {
         let width: usize = self.width as usize;
         let height: usize = self.height as usize;
 
-        for x in 0_usize..width {
-            for y in 0_usize..height {
-                let i = ((y * width) + x) * SIZE_OF_COLOR;
-                self.color_buffer[i..i + SIZE_OF_COLOR].copy_from_slice(color_bytes);
+        for y in 0_usize..height {
+            for x in 0_usize..width {
+                let i: usize = ((y * width) + x) * SIZE_OF_COLOR;
+                let i_end: usize = i + SIZE_OF_COLOR;
+                self.color_buffer[i..i_end].copy_from_slice(color_bytes);
             }
         }
     }
