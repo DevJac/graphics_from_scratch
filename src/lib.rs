@@ -57,7 +57,7 @@ fn project_point_to_screen_space(pixel_renderer: &mut PixelRenderer, p: Vec3) ->
     let half_height: f32 = pixel_renderer.height as f32 / 2.0;
     let centered_x = p.x / (p.z + CAMERA_DIST) * SCALE + half_width;
     let centered_y = p.y / (p.z + CAMERA_DIST) * SCALE + half_height;
-    Vec2::new(centered_x, centered_y)
+    Vec2::new(centered_x, -centered_y + pixel_renderer.height as f32)
 }
 
 pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, mesh: &mut Mesh) {
@@ -108,7 +108,6 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, mesh: &mut Mesh) {
     }
 }
 
-// TODO: Use min_max. Is it faster?
 fn min_max(a: f32, b: f32, c: f32) -> (i32, i32) {
     let min;
     let max;
@@ -132,10 +131,10 @@ fn min_max(a: f32, b: f32, c: f32) -> (i32, i32) {
     (min.round() as i32, max.round() as i32)
 }
 
-fn in_triangle(p: Vec2, vert_0: Vec2, edge_from_vert: Vec2) -> bool {
-    let vert_to_p = p - vert_0;
-    let cross = vert_to_p.cross_z(edge_from_vert);
-    if edge_from_vert.y >= 0.0 {
+fn in_triangle(p: Vec2, vert: Vec2, edge_from_vert: Vec2) -> bool {
+    let vert_to_p = p - vert;
+    let cross = edge_from_vert.cross_z(vert_to_p);
+    if edge_from_vert.y > 0.0 || (edge_from_vert.y == 0.0 && edge_from_vert.x > 0.0) {
         cross > -1.0
     } else {
         cross > 0.0
