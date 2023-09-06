@@ -136,7 +136,7 @@ fn in_triangle(p: Vec2, vert_0: Vec2, edge_from_vert: Vec2) -> bool {
     let vert_to_p = p - vert_0;
     let cross = vert_to_p.cross_z(edge_from_vert);
     if edge_from_vert.y >= 0.0 {
-        cross >= 0.0
+        cross > -1.0
     } else {
         cross > 0.0
     }
