@@ -105,6 +105,11 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, mesh: &mut Mesh) {
         let pc = project_point_to_screen_space(pixel_renderer, vert_c);
 
         draw_triangle(pixel_renderer, face.color, pa, pb, pc);
+
+        pixel_renderer.set_pixel(0, 0, Color::RGB(255, 255, 255));
+        pixel_renderer.set_pixel(10, 0, Color::RGB(255, 0, 0));
+        pixel_renderer.set_pixel(0, 10, Color::RGB(0, 255, 0));
+        pixel_renderer.set_pixel(10, 10, Color::RGB(0, 0, 255));
     }
 }
 
