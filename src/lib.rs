@@ -163,14 +163,9 @@ fn min_max(a: f32, b: f32, c: f32) -> (i32, i32) {
     (min.round() as i32, max.round() as i32)
 }
 
-fn in_triangle(p: Vec2, vert: Vec2, edge_from_vert: Vec2) -> bool {
+fn cross_edge(p: Vec2, vert: Vec2, edge_from_vert: Vec2) -> f32 {
     let vert_to_p = p - vert;
-    let cross = edge_from_vert.cross_z(vert_to_p);
-    if edge_from_vert.y > 0.0 || (edge_from_vert.y == 0.0 && edge_from_vert.x > 0.0) {
-        cross > -0.0001
-    } else {
-        cross > 0.0
-    }
+    edge_from_vert.cross_z(vert_to_p).signum()
 }
 
 pub fn draw_triangle(pixel_renderer: &mut PixelRenderer, color: Color, a: Vec2, b: Vec2, c: Vec2) {
@@ -187,11 +182,11 @@ pub fn draw_triangle(pixel_renderer: &mut PixelRenderer, color: Color, a: Vec2, 
     for x in x_min..=x_max {
         for y in y_min..=y_max {
             let p = Vec2::new(x as f32, y as f32);
-            let in_a = in_triangle(p, a, edge_from_a);
-            let in_b = in_triangle(p, b, edge_from_b);
-            let in_c = in_triangle(p, c, edge_from_c);
+            let in_a = cross_edge(p, a, edge_from_a);
+            let in_b = cross_edge(p, b, edge_from_b);
+            let in_c = cross_edge(p, c, edge_from_c);
 
-            if in_a && in_b && in_c {
+            if in_a == in_b && in_a == in_c {
                 pixel_renderer.set_pixel(x as u32, y as u32, color);
             }
         }
