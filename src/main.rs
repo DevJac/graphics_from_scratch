@@ -12,7 +12,7 @@ fn main() {
         draw_wireframe: false,
         fill_triangles: true,
         backface_culling: true,
-        slow_rendering: false,
+        pause_rendering: false,
     };
     'main_loop: loop {
         for event in pixel_renderer.context.event_pump().unwrap().poll_iter() {
@@ -44,7 +44,7 @@ fn main() {
                     keycode: Some(sdl2::keyboard::Keycode::Num4),
                     ..
                 } => {
-                    draw_options.slow_rendering = !draw_options.slow_rendering;
+                    draw_options.pause_rendering = !draw_options.pause_rendering;
                 }
                 _ => {}
             }

@@ -64,18 +64,18 @@ pub struct DrawOptions {
     pub draw_wireframe: bool,
     pub fill_triangles: bool,
     pub backface_culling: bool,
-    pub slow_rendering: bool,
+    pub pause_rendering: bool,
 }
 
 pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions, mesh: &mut Mesh) {
     let mut rng = rand::thread_rng();
-    if !draw_options.slow_rendering || rng.gen::<f32>() > 0.98 {
+    if !draw_options.pause_rendering && rng.gen::<f32>() < 0.03 {
         mesh.rotation.x = mesh.rotation.x * 0.99 + rng.gen_range(-0.03..0.03);
         mesh.rotation.y = mesh.rotation.y * 0.99 + rng.gen_range(-0.03..0.03);
         mesh.rotation.z = mesh.rotation.z * 0.99 + rng.gen_range(-0.03..0.03);
     }
 
-    if !draw_options.slow_rendering || rng.gen::<f32>() > 0.98 {
+    if !draw_options.pause_rendering {
         for p in mesh.vertices.iter_mut() {
             let (rot_x, rot_y) = rotate(p.x, p.y, mesh.rotation.z);
             let (rot_x, rot_z) = rotate(rot_x, p.z, mesh.rotation.y);
@@ -113,6 +113,24 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions,
             draw_line(pixel_renderer, Color::RGB(255, 255, 255), pa, pb);
             draw_line(pixel_renderer, Color::RGB(255, 255, 255), pb, pc);
             draw_line(pixel_renderer, Color::RGB(255, 255, 255), pc, pa);
+        }
+
+        if !draw_options.fill_triangles && !draw_options.draw_wireframe {
+            pixel_renderer.set_pixel(
+                pa.x.round() as u32,
+                pa.y.round() as u32,
+                Color::RGB(255, 255, 255),
+            );
+            pixel_renderer.set_pixel(
+                pb.x.round() as u32,
+                pb.y.round() as u32,
+                Color::RGB(255, 255, 255),
+            );
+            pixel_renderer.set_pixel(
+                pc.x.round() as u32,
+                pc.y.round() as u32,
+                Color::RGB(255, 255, 255),
+            );
         }
 
         pixel_renderer.set_pixel(0, 0, Color::RGB(255, 255, 255));
