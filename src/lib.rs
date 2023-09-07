@@ -60,21 +60,30 @@ fn project_point_to_screen_space(pixel_renderer: &mut PixelRenderer, p: Vec3) ->
     Vec2::new(centered_x, -centered_y + pixel_renderer.height as f32)
 }
 
-pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, mesh: &mut Mesh) {
+pub struct DrawOptions {
+    pub draw_wireframe: bool,
+    pub fill_triangles: bool,
+    pub backface_culling: bool,
+    pub slow_rendering: bool,
+}
+
+pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions, mesh: &mut Mesh) {
     let mut rng = rand::thread_rng();
-    if rng.gen::<f32>() > 0.99 {
+    if !draw_options.slow_rendering || rng.gen::<f32>() > 0.98 {
         mesh.rotation.x = mesh.rotation.x * 0.99 + rng.gen_range(-0.03..0.03);
         mesh.rotation.y = mesh.rotation.y * 0.99 + rng.gen_range(-0.03..0.03);
         mesh.rotation.z = mesh.rotation.z * 0.99 + rng.gen_range(-0.03..0.03);
     }
 
-    for p in mesh.vertices.iter_mut() {
-        let (rot_x, rot_y) = rotate(p.x, p.y, mesh.rotation.z);
-        let (rot_x, rot_z) = rotate(rot_x, p.z, mesh.rotation.y);
-        let (rot_y, rot_z) = rotate(rot_y, rot_z, mesh.rotation.x);
-        p.x = rot_x;
-        p.y = rot_y;
-        p.z = rot_z;
+    if !draw_options.slow_rendering || rng.gen::<f32>() > 0.98 {
+        for p in mesh.vertices.iter_mut() {
+            let (rot_x, rot_y) = rotate(p.x, p.y, mesh.rotation.z);
+            let (rot_x, rot_z) = rotate(rot_x, p.z, mesh.rotation.y);
+            let (rot_y, rot_z) = rotate(rot_y, rot_z, mesh.rotation.x);
+            p.x = rot_x;
+            p.y = rot_y;
+            p.z = rot_z;
+        }
     }
 
     pixel_renderer.clear_pixels(Color::RGB(0, 0, 0));
@@ -85,26 +94,26 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, mesh: &mut Mesh) {
         let vert_c = mesh.vertices[face.c];
 
         let face_normal = (vert_b - vert_a).cross(vert_c - vert_a);
-        let vec_to_camera = Vec3::new(0.0, 0.0, -CAMERA_DIST) - vert_a;
-        let vec_to_camera_b = Vec3::new(0.0, 0.0, -CAMERA_DIST) - vert_b;
-        let vec_to_camera_c = Vec3::new(0.0, 0.0, -CAMERA_DIST) - vert_c;
-        debug_assert!(
-            face_normal.dot(vec_to_camera).is_sign_positive()
-                == face_normal.dot(vec_to_camera_b).is_sign_positive()
-        );
-        debug_assert!(
-            face_normal.dot(vec_to_camera).is_sign_positive()
-                == face_normal.dot(vec_to_camera_c).is_sign_positive()
-        );
-        if face_normal.dot(vec_to_camera) <= 0.0 {
-            continue;
+        if draw_options.backface_culling {
+            let vec_to_camera = Vec3::new(0.0, 0.0, -CAMERA_DIST) - vert_a;
+            if face_normal.dot(vec_to_camera) <= 0.0 {
+                continue;
+            }
         }
 
         let pa = project_point_to_screen_space(pixel_renderer, vert_a);
         let pb = project_point_to_screen_space(pixel_renderer, vert_b);
         let pc = project_point_to_screen_space(pixel_renderer, vert_c);
 
-        draw_triangle(pixel_renderer, face.color, pa, pb, pc);
+        if draw_options.fill_triangles {
+            draw_triangle(pixel_renderer, face.color, pa, pb, pc);
+        }
+
+        if draw_options.draw_wireframe {
+            draw_line(pixel_renderer, Color::RGB(255, 255, 255), pa, pb);
+            draw_line(pixel_renderer, Color::RGB(255, 255, 255), pb, pc);
+            draw_line(pixel_renderer, Color::RGB(255, 255, 255), pc, pa);
+        }
 
         pixel_renderer.set_pixel(0, 0, Color::RGB(255, 255, 255));
         pixel_renderer.set_pixel(10, 0, Color::RGB(255, 0, 0));
@@ -140,7 +149,7 @@ fn in_triangle(p: Vec2, vert: Vec2, edge_from_vert: Vec2) -> bool {
     let vert_to_p = p - vert;
     let cross = edge_from_vert.cross_z(vert_to_p);
     if edge_from_vert.y > 0.0 || (edge_from_vert.y == 0.0 && edge_from_vert.x > 0.0) {
-        cross > -1.0
+        cross > -0.0001
     } else {
         cross > 0.0
     }
@@ -171,18 +180,11 @@ pub fn draw_triangle(pixel_renderer: &mut PixelRenderer, color: Color, a: Vec2, 
     }
 }
 
-pub fn draw_line(
-    pixel_renderer: &mut PixelRenderer,
-    color: Color,
-    x0: f32,
-    y0: f32,
-    x1: f32,
-    y1: f32,
-) {
-    let mut x0: i32 = x0.round() as i32;
-    let mut y0: i32 = y0.round() as i32;
-    let x1: i32 = x1.round() as i32;
-    let y1: i32 = y1.round() as i32;
+pub fn draw_line(pixel_renderer: &mut PixelRenderer, color: Color, a: Vec2, b: Vec2) {
+    let mut x0: i32 = a.x.round() as i32;
+    let mut y0: i32 = a.y.round() as i32;
+    let x1: i32 = b.x.round() as i32;
+    let y1: i32 = b.y.round() as i32;
 
     let delta_x = x1 - x0;
     let delta_x_abs = delta_x.abs();
@@ -203,7 +205,9 @@ pub fn draw_line(
                 x0 -= 1;
             }
             accumulated_error += delta_y_abs;
-            if (accumulated_error + accumulated_error) > delta_x_abs {
+            if ((accumulated_error + accumulated_error) > delta_x_abs)
+                || (delta_y > 0 && (accumulated_error + accumulated_error) == delta_x_abs)
+            {
                 accumulated_error -= delta_x_abs;
                 if delta_y > 0 {
                     y0 += 1;
@@ -224,7 +228,9 @@ pub fn draw_line(
                 y0 -= 1;
             }
             accumulated_error += delta_x_abs;
-            if (accumulated_error + accumulated_error) > delta_y_abs {
+            if ((accumulated_error + accumulated_error) > delta_y_abs)
+                || (delta_x > 0 && (accumulated_error + accumulated_error) == delta_y_abs)
+            {
                 accumulated_error -= delta_y_abs;
                 if delta_x > 0 {
                     x0 += 1;
