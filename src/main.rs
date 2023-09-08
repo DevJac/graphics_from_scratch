@@ -9,10 +9,10 @@ fn main() {
     let mut cube_mesh = get_cube_mesh();
     let mut pixel_renderer = PixelRenderer::new(width, height);
     let mut draw_options = DrawOptions {
-        draw_wireframe: false,
+        draw_wireframe: true,
         fill_triangles: true,
         backface_culling: true,
-        pause_rendering: false,
+        pause_rendering: true,
     };
     'main_loop: loop {
         for event in pixel_renderer.context.event_pump().unwrap().poll_iter() {

@@ -165,7 +165,11 @@ fn min_max(a: f32, b: f32, c: f32) -> (i32, i32) {
 
 fn cross_edge(p: Vec2, vert: Vec2, edge_from_vert: Vec2) -> f32 {
     let vert_to_p = p - vert;
-    edge_from_vert.cross_z(vert_to_p).signum()
+    let mut cross_z = edge_from_vert.cross_z(vert_to_p);
+    if edge_from_vert.y > 0.0 || (edge_from_vert.y == 0.0 && edge_from_vert.x > 0.0) {
+        cross_z -= 0.0001;
+    }
+    cross_z.signum()
 }
 
 pub fn draw_triangle(pixel_renderer: &mut PixelRenderer, color: Color, a: Vec2, b: Vec2, c: Vec2) {

@@ -16,8 +16,7 @@ impl Vec2 {
     }
 
     pub fn cross_z(&self, other: Self) -> f32 {
-        let z = self.x * other.y - self.y * other.x;
-        z
+        self.x * other.y - self.y * other.x
     }
 
     pub fn dot(&self, other: Self) -> f32 {
