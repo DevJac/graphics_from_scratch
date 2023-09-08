@@ -2,7 +2,7 @@ use crate::vec::Vec3;
 use std::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-struct Mat4 {
+pub struct Mat4 {
     data: [f32; 16],
 }
 
@@ -158,12 +158,6 @@ impl Mul<Vec3> for Mat4 {
             (self.get(1, 0) * other.x) + (self.get(1, 1) * other.y) + (self.get(1, 2) * other.z),
             (self.get(2, 0) * other.x) + (self.get(2, 1) * other.y) + (self.get(2, 2) * other.z),
         )
-    }
-}
-
-impl MulAssign<Vec3> for Mat4 {
-    fn mul_assign(&mut self, other: Vec3) {
-        todo!()
     }
 }
 
