@@ -1,3 +1,4 @@
+pub mod mat;
 pub mod mesh;
 pub mod pixel_renderer;
 pub mod vec;
