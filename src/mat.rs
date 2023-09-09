@@ -7,6 +7,7 @@ pub struct Mat4 {
 }
 
 impl Mat4 {
+    #[allow(clippy::too_many_arguments)]
     #[rustfmt::skip]
     pub const fn new(
         f_00: f32, f_01: f32, f_02: f32, f_03: f32,
@@ -45,6 +46,59 @@ impl Mat4 {
 	)
     }
 
+    #[rustfmt::skip]
+    pub fn scale(x: f32, y: f32, z: f32) -> Self {
+	Self::new(
+	    x,   0.0, 0.0, 0.0,
+	    0.0, y,   0.0, 0.0,
+	    0.0, 0.0, z,   0.0,
+	    0.0, 0.0, 0.0, 1.0,
+	)
+    }
+
+    #[rustfmt::skip]
+    pub fn translate(x: f32, y: f32, z: f32) -> Self {
+	Self::new(
+	    1.0, 0.0, 0.0, x,
+	    0.0, 1.0, 0.0, y,
+	    0.0, 0.0, 1.0, z,
+	    0.0, 0.0, 0.0, 1.0,
+	)
+    }
+
+    #[rustfmt::skip]
+    pub fn rotate_x(angle_degrees: f32) -> Self {
+	let (sin_a, cos_a) = angle_degrees.to_radians().sin_cos();
+	Self::new(
+	    1.0,   0.0,    0.0,   0.0,
+	    0.0,   cos_a, -sin_a, 0.0,
+	    0.0,   sin_a,  cos_a, 0.0,
+	    0.0,   0.0,    0.0,   1.0,
+	)
+    }
+
+    #[rustfmt::skip]
+    pub fn rotate_y(angle_degrees: f32) -> Self {
+	let (sin_a, cos_a) = angle_degrees.to_radians().sin_cos();
+	Self::new(
+	    cos_a,  0.0,   sin_a, 0.0,
+	    0.0,    1.0,   0.0,   0.0,
+	    -sin_a, 0.0,   cos_a, 0.0,
+	    0.0,    0.0,   0.0,   1.0,
+	)
+    }
+
+    #[rustfmt::skip]
+    pub fn rotate_z(angle_degrees: f32) -> Self {
+	let (sin_a, cos_a) = angle_degrees.to_radians().sin_cos();
+	Self::new(
+	    cos_a, -sin_a, 0.0,   0.0,
+	    sin_a, cos_a,  0.0,   0.0,
+	    0.0,   0.0,    1.0,   0.0,
+	    0.0,   0.0,    0.0,   1.0,
+	)
+    }
+
     pub fn get(&self, row: usize, column: usize) -> f32 {
         if row >= 4 || column >= 4 {
             panic!("Element {} {} is out of range for Mat4", row, column);
@@ -70,8 +124,8 @@ impl Add for Mat4 {
     fn add(self, other: Self) -> Self {
         let mut data = [0.0; 16];
 
-        for i in 0..16 {
-            data[i] = self.data[i] + other.data[i];
+        for (i, datum) in data.iter_mut().enumerate() {
+            *datum = self.data[i] + other.data[i];
         }
 
         Self { data }
@@ -80,8 +134,8 @@ impl Add for Mat4 {
 
 impl AddAssign for Mat4 {
     fn add_assign(&mut self, other: Self) {
-        for i in 0..16 {
-            self.data[i] += other.data[i];
+        for (i, datum) in self.data.iter_mut().enumerate() {
+            *datum += other.data[i];
         }
     }
 }
@@ -92,8 +146,8 @@ impl Sub for Mat4 {
     fn sub(self, other: Self) -> Self {
         let mut data = [0.0; 16];
 
-        for i in 0..16 {
-            data[i] = self.data[i] - other.data[i];
+        for (i, datum) in data.iter_mut().enumerate() {
+            *datum = self.data[i] - other.data[i];
         }
 
         Self { data }
@@ -102,8 +156,8 @@ impl Sub for Mat4 {
 
 impl SubAssign for Mat4 {
     fn sub_assign(&mut self, other: Self) {
-        for i in 0..16 {
-            self.data[i] -= other.data[i];
+        for (i, datum) in self.data.iter_mut().enumerate() {
+            *datum -= other.data[i];
         }
     }
 }
@@ -143,8 +197,8 @@ impl Mul<f32> for Mat4 {
     fn mul(self, other: f32) -> Self {
         let mut data = [0.0; 16];
 
-        for i in 0..16 {
-            data[i] = self.data[i] * other;
+        for (i, datum) in data.iter_mut().enumerate() {
+            *datum = self.data[i] * other;
         }
 
         Self { data }
@@ -153,8 +207,8 @@ impl Mul<f32> for Mat4 {
 
 impl MulAssign<f32> for Mat4 {
     fn mul_assign(&mut self, other: f32) {
-        for i in 0..16 {
-            self.data[i] *= other;
+        for datum in self.data.iter_mut() {
+            *datum *= other;
         }
     }
 }

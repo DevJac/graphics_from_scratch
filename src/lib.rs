@@ -3,6 +3,7 @@ pub mod mesh;
 pub mod pixel_renderer;
 pub mod vec;
 
+use mat::Mat4;
 use mesh::{Face, Mesh};
 use pixel_renderer::PixelRenderer;
 use rand::{seq::SliceRandom, Rng};
@@ -11,11 +12,6 @@ use vec::{Vec2, Vec3};
 
 const CAMERA_DIST: f32 = 5.0;
 const SCALE: f32 = 200.0;
-
-fn rotate(x: f32, y: f32, angle_degrees: f32) -> (f32, f32) {
-    let (sin_a, cos_a) = angle_degrees.to_radians().sin_cos();
-    (x * cos_a - y * sin_a, x * sin_a + y * cos_a)
-}
 
 pub fn get_cube_mesh() -> Mesh {
     use std::fs::File;
@@ -58,7 +54,7 @@ fn project_point_to_screen_space(pixel_renderer: &mut PixelRenderer, p: Vec3) ->
     let half_height: f32 = pixel_renderer.height as f32 / 2.0;
     let centered_x = p.x / (p.z + CAMERA_DIST) * SCALE + half_width;
     let centered_y = p.y / (p.z + CAMERA_DIST) * SCALE + half_height;
-    Vec2::new(centered_x, -centered_y + pixel_renderer.height as f32)
+    Vec2::new(centered_x, centered_y)
 }
 
 pub struct DrawOptions {
@@ -78,12 +74,10 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions,
 
     if !draw_options.pause_rendering {
         for p in mesh.vertices.iter_mut() {
-            let (rot_x, rot_y) = rotate(p.x, p.y, mesh.rotation.z);
-            let (rot_x, rot_z) = rotate(rot_x, p.z, mesh.rotation.y);
-            let (rot_y, rot_z) = rotate(rot_y, rot_z, mesh.rotation.x);
-            p.x = rot_x;
-            p.y = rot_y;
-            p.z = rot_z;
+            let rx = Mat4::rotate_x(mesh.rotation.x);
+            let ry = Mat4::rotate_y(mesh.rotation.y);
+            let rz = Mat4::rotate_z(mesh.rotation.z);
+            *p = rx * ry * rz * (*p);
         }
     }
 
