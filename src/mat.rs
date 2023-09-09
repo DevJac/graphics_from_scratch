@@ -111,19 +111,29 @@ impl SubAssign for Mat4 {
 impl Mul for Mat4 {
     type Output = Self;
 
+    #[rustfmt::skip]
     fn mul(self, other: Self) -> Self {
-        let mut data = [0.0; 16];
+        let mut data = std::mem::MaybeUninit::<[f32; 16]>::uninit();
+        let data_p = data.as_mut_ptr() as *mut f32;
 
         for column in 0..4 {
             for row in 0..4 {
                 let i = (column * 4) + row;
-                for j in 0..4 {
-                    data[i] += self.get(row, j) * other.get(j, column);
+                unsafe {
+                    *data_p.add(i) =
+                          self.get(row, 0) * other.get(0, column)
+                        + self.get(row, 1) * other.get(1, column)
+                        + self.get(row, 2) * other.get(2, column)
+                        + self.get(row, 3) * other.get(3, column);
                 }
             }
         }
 
-        Self { data }
+        unsafe {
+            Self {
+                data: data.assume_init(),
+            }
+        }
     }
 }
 
