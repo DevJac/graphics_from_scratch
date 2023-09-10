@@ -218,9 +218,18 @@ impl Mul<Vec3> for Mat4 {
 
     fn mul(self, other: Vec3) -> Vec3 {
         Vec3::new(
-            (self.get(0, 0) * other.x) + (self.get(0, 1) * other.y) + (self.get(0, 2) * other.z),
-            (self.get(1, 0) * other.x) + (self.get(1, 1) * other.y) + (self.get(1, 2) * other.z),
-            (self.get(2, 0) * other.x) + (self.get(2, 1) * other.y) + (self.get(2, 2) * other.z),
+            (self.get(0, 0) * other.x)
+                + (self.get(0, 1) * other.y)
+                + (self.get(0, 2) * other.z)
+                + self.get(0, 3),
+            (self.get(1, 0) * other.x)
+                + (self.get(1, 1) * other.y)
+                + (self.get(1, 2) * other.z)
+                + self.get(1, 3),
+            (self.get(2, 0) * other.x)
+                + (self.get(2, 1) * other.y)
+                + (self.get(2, 2) * other.z)
+                + self.get(2, 3),
         )
     }
 }
@@ -229,8 +238,8 @@ impl Mul<Vec3> for Mat4 {
 fn test_mat4_get_set() {
     let mut mat = Mat4::zero();
     mat.set(2, 3, 4.5);
-    assert!(mat.get(2, 3) == 4.5);
-    assert!(mat.get(2, 2) == 0.0);
+    assert_eq!(mat.get(2, 3), 4.5);
+    assert_eq!(mat.get(2, 2), 0.0);
 
     #[rustfmt::skip]
     let b = Mat4::new(
@@ -241,15 +250,15 @@ fn test_mat4_get_set() {
     );
 
     dbg!(b.get(2, 1));
-    assert!(b.get(2, 1) == 3.0);
-    assert!(b.get(0, 3) == 0.0);
+    assert_eq!(b.get(2, 1), 3.0);
+    assert_eq!(b.get(0, 3), 0.0);
 }
 
 #[test]
 fn test_mat4_simple_ops_add_sub_f32_mul() {
     let a = Mat4::identity();
 
-    assert!(a * 2.0 == a + a);
+    assert_eq!(a * 2.0, a + a);
 
     #[rustfmt::skip]
     let mut b = Mat4::new(
@@ -259,23 +268,23 @@ fn test_mat4_simple_ops_add_sub_f32_mul() {
 	3.0, 1.0, 2.0, 3.0,
     );
 
-    assert!(b.get(2, 1) == 3.0);
-    assert!(b.get(0, 3) == 0.0);
-    assert!(b == b - b + b);
-    assert!(Mat4::zero() == b - b);
+    assert_eq!(b.get(2, 1), 3.0);
+    assert_eq!(b.get(0, 3), 0.0);
+    assert_eq!(b, b - b + b);
+    assert_eq!(Mat4::zero(), b - b);
 
     let mut c = b.clone();
 
     c -= b;
 
-    assert!(c == Mat4::zero());
+    assert_eq!(c, Mat4::zero());
 
     let mut c = b.clone();
 
     c += b;
     b *= 2.0;
 
-    assert!(c == b);
+    assert_eq!(c, b);
 }
 
 #[test]
@@ -302,7 +311,7 @@ fn test_mat4_mat4_mul() {
 	1.0, 4.0, 5.0, 5.0,
     );
 
-    assert!(a * b == c);
+    assert_eq!(a * b, c);
 }
 
 #[test]
@@ -315,6 +324,15 @@ fn test_mat4_vec3_mul() {
 	1.0, 1.0, 0.0, 1.0,
     );
     let b = Vec3::new(1.0, 0.0, 3.0);
+    assert_eq!(a * b, Vec3::new(11.0, 12.0, 8.0));
 
-    assert!(a * b == Vec3::new(9.0, 9.0, 5.0));
+    #[rustfmt::skip]
+    let a = Mat4::new(
+	1.0, 0.0, 0.0, 2.0,
+	0.0, 1.0, 0.0, 3.0,
+	0.0, 0.0, 1.0, 3.0,
+	0.0, 0.0, 0.0, 1.0,
+    );
+    let b = Vec3::new(1.0, 0.0, 3.0);
+    assert_eq!(a * b, Vec3::new(3.0, 3.0, 6.0));
 }
