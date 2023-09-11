@@ -162,7 +162,9 @@ fn cross_edge(p: Vec2, vert: Vec2, edge_from_vert: Vec2) -> f32 {
     let vert_to_p = p - vert;
     let mut cross_z = edge_from_vert.cross_z(vert_to_p);
     if edge_from_vert.y > 0.0 || (edge_from_vert.y == 0.0 && edge_from_vert.x > 0.0) {
-        cross_z -= 0.0001;
+        cross_z += 0.000_001;
+    } else {
+        cross_z -= 0.000_001;
     }
     cross_z.signum()
 }
