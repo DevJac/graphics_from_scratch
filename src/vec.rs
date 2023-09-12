@@ -340,6 +340,9 @@ fn test_vec_len() {
     assert_eq!(v3_1.len(), 5.0);
     assert_eq!(v3_2.len(), 5.0);
     assert_eq!(v3_3.len(), 7.497333);
+
+    assert_eq!(Vec4::new(3.0, 4.0, 0.0, 0.0).len(), 5.0);
+    assert_eq!(Vec4::new(0.0, 0.0, 4.0, 3.0).len(), 5.0);
 }
 
 #[test]
@@ -367,6 +370,22 @@ fn test_vec_add_sub() {
 
     assert_eq!(a, Vec2::new(1.0, 2.0));
     assert_eq!(c, Vec3::new(1.0, 2.0, 3.0));
+
+    let mut f = Vec4::new(1.0, 2.0, 3.0, 1.0);
+    let g = Vec4::new(4.0, 5.0, 6.0, 2.0);
+    let h = Vec4::new(0.0, 0.0, 0.0, 0.0);
+
+    assert_eq!(f + g, Vec4::new(5.0, 7.0, 9.0, 3.0));
+    assert_eq!(f - g, Vec4::new(-3.0, -3.0, -3.0, -1.0));
+    assert_eq!(g - h, g);
+
+    f += g;
+
+    assert_eq!(f, Vec4::new(5.0, 7.0, 9.0, 3.0));
+
+    f -= g;
+
+    assert_eq!(f, Vec4::new(1.0, 2.0, 3.0, 1.0));
 }
 
 #[test]
@@ -397,6 +416,26 @@ fn test_vec_mul_div() {
     assert_eq!(a, Vec2::new(1.0, 2.0));
     assert_eq!(b, Vec3::new(1.0, 2.0, 3.0));
     assert_eq!(c, Vec3::new(0.0, 0.0, 0.0));
+
+    let mut d = Vec4::new(1.0, 2.0, 3.0, 4.0);
+    let mut e = Vec4::new(0.0, 0.0, 0.0, 0.0);
+
+    assert_eq!(d * 1.5, Vec4::new(1.5, 3.0, 4.5, 6.0));
+    assert_eq!(e * 1.5, Vec4::new(0.0, 0.0, 0.0, 0.0));
+    assert_eq!((d * 1.5) / 1.5, Vec4::new(1.0, 2.0, 3.0, 4.0));
+    assert_eq!((e * 1.5) / 1.5, Vec4::new(0.0, 0.0, 0.0, 0.0));
+
+    d *= 2.0;
+    e *= 2.0;
+
+    assert_eq!(d, Vec4::new(2.0, 4.0, 6.0, 8.0));
+    assert_eq!(e, Vec4::new(0.0, 0.0, 0.0, 0.0));
+
+    d /= 2.0;
+    e /= 2.0;
+
+    assert_eq!(d, Vec4::new(1.0, 2.0, 3.0, 4.0));
+    assert_eq!(e, Vec4::new(0.0, 0.0, 0.0, 0.0));
 }
 
 #[test]
@@ -442,6 +481,19 @@ fn test_vec_dot() {
     assert_eq!(Vec3::new(1.0, 0.0, 0.0).dot(Vec3::new(0.0, 1.0, 0.0)), 0.0);
     assert_eq!(Vec3::new(1.0, 1.0, 1.0).dot(Vec3::new(0.0, 1.0, 1.0)), 2.0);
     assert_eq!(Vec3::new(0.0, 0.0, 4.0).dot(Vec3::new(0.0, 0.0, 5.0)), 20.0);
+
+    assert_eq!(
+        Vec4::new(1.0, 0.0, 0.0, 1.0).dot(Vec4::new(0.0, 1.0, 0.0, 0.0)),
+        0.0
+    );
+    assert_eq!(
+        Vec4::new(1.0, 1.0, 1.0, 1.0).dot(Vec4::new(0.0, 1.0, 1.0, 1.0)),
+        3.0
+    );
+    assert_eq!(
+        Vec4::new(0.0, 0.0, 4.0, 1.0).dot(Vec4::new(0.0, 0.0, 5.0, 2.0)),
+        22.0
+    );
 }
 
 #[test]
@@ -473,76 +525,7 @@ fn test_vec_unit_norm() {
         Vec3::new(2.0, 2.0, 1.0).unit_norm(),
         Vec3::new(0.66666666, 0.66666666, 0.33333333)
     );
-}
 
-//================================================
-
-#[test]
-fn test_vec4_len() {
-    assert_eq!(Vec4::new(3.0, 4.0, 0.0, 0.0).len(), 5.0);
-    assert_eq!(Vec4::new(0.0, 0.0, 4.0, 3.0).len(), 5.0);
-}
-
-#[test]
-fn test_vec4_add_sub() {
-    let mut c = Vec4::new(1.0, 2.0, 3.0, 1.0);
-    let d = Vec4::new(4.0, 5.0, 6.0, 2.0);
-    let e = Vec4::new(0.0, 0.0, 0.0, 0.0);
-
-    assert_eq!(c + d, Vec4::new(5.0, 7.0, 9.0, 3.0));
-    assert_eq!(c - d, Vec4::new(-3.0, -3.0, -3.0, -1.0));
-    assert_eq!(d - e, d);
-
-    c += d;
-
-    assert_eq!(c, Vec4::new(5.0, 7.0, 9.0, 3.0));
-
-    c -= d;
-
-    assert_eq!(c, Vec4::new(1.0, 2.0, 3.0, 1.0));
-}
-
-#[test]
-fn test_vec4_mul_div() {
-    let mut b = Vec4::new(1.0, 2.0, 3.0, 4.0);
-    let mut c = Vec4::new(0.0, 0.0, 0.0, 0.0);
-
-    assert_eq!(b * 1.5, Vec4::new(1.5, 3.0, 4.5, 6.0));
-    assert_eq!(c * 1.5, Vec4::new(0.0, 0.0, 0.0, 0.0));
-    assert_eq!((b * 1.5) / 1.5, Vec4::new(1.0, 2.0, 3.0, 4.0));
-    assert_eq!((c * 1.5) / 1.5, Vec4::new(0.0, 0.0, 0.0, 0.0));
-
-    b *= 2.0;
-    c *= 2.0;
-
-    assert_eq!(b, Vec4::new(2.0, 4.0, 6.0, 8.0));
-    assert_eq!(c, Vec4::new(0.0, 0.0, 0.0, 0.0));
-
-    b /= 2.0;
-    c /= 2.0;
-
-    assert_eq!(b, Vec4::new(1.0, 2.0, 3.0, 4.0));
-    assert_eq!(c, Vec4::new(0.0, 0.0, 0.0, 0.0));
-}
-
-#[test]
-fn test_vec4_dot() {
-    assert_eq!(
-        Vec4::new(1.0, 0.0, 0.0, 1.0).dot(Vec4::new(0.0, 1.0, 0.0, 0.0)),
-        0.0
-    );
-    assert_eq!(
-        Vec4::new(1.0, 1.0, 1.0, 1.0).dot(Vec4::new(0.0, 1.0, 1.0, 1.0)),
-        3.0
-    );
-    assert_eq!(
-        Vec4::new(0.0, 0.0, 4.0, 1.0).dot(Vec4::new(0.0, 0.0, 5.0, 2.0)),
-        22.0
-    );
-}
-
-#[test]
-fn test_vec4_unit_norm() {
     assert_eq!(
         Vec4::new(0.0, 0.0, 0.0, 1.0).unit_norm(),
         Vec4::new(0.0, 0.0, 0.0, 1.0)

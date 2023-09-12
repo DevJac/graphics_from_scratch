@@ -1,4 +1,4 @@
-use crate::vec::Vec3;
+use crate::vec::{Vec3, Vec4};
 use std::ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -221,15 +221,40 @@ impl Mul<Vec3> for Mat4 {
             (self.get(0, 0) * other.x)
                 + (self.get(0, 1) * other.y)
                 + (self.get(0, 2) * other.z)
-                + self.get(0, 3),
+                + (self.get(0, 3)),
             (self.get(1, 0) * other.x)
                 + (self.get(1, 1) * other.y)
                 + (self.get(1, 2) * other.z)
-                + self.get(1, 3),
+                + (self.get(1, 3)),
             (self.get(2, 0) * other.x)
                 + (self.get(2, 1) * other.y)
                 + (self.get(2, 2) * other.z)
-                + self.get(2, 3),
+                + (self.get(2, 3)),
+        )
+    }
+}
+
+impl Mul<Vec4> for Mat4 {
+    type Output = Vec4;
+
+    fn mul(self, other: Vec4) -> Vec4 {
+        Vec4::new(
+            (self.get(0, 0) * other.x)
+                + (self.get(0, 1) * other.y)
+                + (self.get(0, 2) * other.z)
+                + (self.get(0, 3) * other.w),
+            (self.get(1, 0) * other.x)
+                + (self.get(1, 1) * other.y)
+                + (self.get(1, 2) * other.z)
+                + (self.get(1, 3) * other.w),
+            (self.get(2, 0) * other.x)
+                + (self.get(2, 1) * other.y)
+                + (self.get(2, 2) * other.z)
+                + (self.get(2, 3) * other.w),
+            (self.get(3, 0) * other.x)
+                + (self.get(3, 1) * other.y)
+                + (self.get(3, 2) * other.z)
+                + (self.get(3, 3) * other.w),
         )
     }
 }
@@ -312,6 +337,29 @@ fn test_mat4_mat4_mul() {
     );
 
     assert_eq!(a * b, c);
+}
+
+#[test]
+fn test_mat4_vec4_mul() {
+    #[rustfmt::skip]
+    let a = Mat4::new(
+	3.0, 1.0, 2.0, 2.0,
+	3.0, 1.0, 2.0, 3.0,
+	2.0, 0.0, 1.0, 3.0,
+	1.0, 1.0, 0.0, 1.0,
+    );
+    let b = Vec4::new(1.0, 0.0, 3.0, 1.0);
+    assert_eq!(a * b, Vec4::new(11.0, 12.0, 8.0, 2.0));
+
+    #[rustfmt::skip]
+    let a = Mat4::new(
+	1.0, 0.0, 0.0, 2.0,
+	0.0, 1.0, 0.0, 3.0,
+	0.0, 0.0, 1.0, 3.0,
+	0.0, 0.0, 0.0, 1.0,
+    );
+    let b = Vec4::new(1.0, 0.0, 3.0, 1.0);
+    assert_eq!(a * b, Vec4::new(3.0, 3.0, 6.0, 1.0));
 }
 
 #[test]
