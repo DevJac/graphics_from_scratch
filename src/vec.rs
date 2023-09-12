@@ -213,6 +213,122 @@ impl DivAssign<f32> for Vec3 {
     }
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct Vec4 {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub w: f32,
+}
+
+impl Vec4 {
+    pub const fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
+        Self { x, y, z, w }
+    }
+
+    pub fn len(&self) -> f32 {
+        (self.x.powi(2) + self.y.powi(2) + self.z.powi(2) + self.w.powi(2)).sqrt()
+    }
+
+    pub fn dot(&self, other: Self) -> f32 {
+        (self.x * other.x) + (self.y * other.y) + (self.z * other.z) + (self.w * other.w)
+    }
+
+    pub fn unit_norm(&self) -> Self {
+        let len = self.len();
+        Self {
+            x: self.x / len,
+            y: self.y / len,
+            z: self.z / len,
+            w: self.w / len,
+        }
+    }
+}
+
+impl Add for Vec4 {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        let x = self.x + other.x;
+        let y = self.y + other.y;
+        let z = self.z + other.z;
+        let w = self.w + other.w;
+        Self { x, y, z, w }
+    }
+}
+
+impl AddAssign for Vec4 {
+    fn add_assign(&mut self, other: Self) {
+        self.x += other.x;
+        self.y += other.y;
+        self.z += other.z;
+        self.w += other.w;
+    }
+}
+
+impl Sub for Vec4 {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self {
+        let x = self.x - other.x;
+        let y = self.y - other.y;
+        let z = self.z - other.z;
+        let w = self.w - other.w;
+        Self { x, y, z, w }
+    }
+}
+
+impl SubAssign for Vec4 {
+    fn sub_assign(&mut self, other: Self) {
+        self.x -= other.x;
+        self.y -= other.y;
+        self.z -= other.z;
+        self.w -= other.w;
+    }
+}
+
+impl Mul<f32> for Vec4 {
+    type Output = Self;
+
+    fn mul(self, other: f32) -> Self {
+        let x = self.x * other;
+        let y = self.y * other;
+        let z = self.z * other;
+        let w = self.w * other;
+        Self { x, y, z, w }
+    }
+}
+
+impl MulAssign<f32> for Vec4 {
+    fn mul_assign(&mut self, other: f32) {
+        self.x *= other;
+        self.y *= other;
+        self.z *= other;
+        self.w *= other;
+    }
+}
+
+impl Div<f32> for Vec4 {
+    type Output = Self;
+
+    fn div(self, other: f32) -> Self {
+        let x = self.x / other;
+        let y = self.y / other;
+        let z = self.z / other;
+        let w = self.w / other;
+        Self { x, y, z, w }
+    }
+}
+
+impl DivAssign<f32> for Vec4 {
+    fn div_assign(&mut self, other: f32) {
+        self.x /= other;
+        self.y /= other;
+        self.z /= other;
+        self.w /= other;
+    }
+}
+
 #[test]
 fn test_vec_len() {
     let v2 = Vec2::new(3.0, 4.0);
@@ -220,10 +336,10 @@ fn test_vec_len() {
     let v3_2 = Vec3::new(3.0, 0.0, 4.0);
     let v3_3 = Vec3::new(2.5, 6.4, 3.0);
 
-    assert!(v2.len() == 5.0);
-    assert!(v3_1.len() == 5.0);
-    assert!(v3_2.len() == 5.0);
-    assert!(v3_3.len() == 7.497333);
+    assert_eq!(v2.len(), 5.0);
+    assert_eq!(v3_1.len(), 5.0);
+    assert_eq!(v3_2.len(), 5.0);
+    assert_eq!(v3_3.len(), 7.497333);
 }
 
 #[test]
@@ -234,23 +350,23 @@ fn test_vec_add_sub() {
     let d = Vec3::new(4.0, 5.0, 6.0);
     let e = Vec3::new(0.0, 0.0, 0.0);
 
-    assert!(a + b == Vec2::new(4.0, 6.0));
-    assert!(a - b == Vec2::new(-2.0, -2.0));
-    assert!(c + d == Vec3::new(5.0, 7.0, 9.0));
-    assert!(c - d == Vec3::new(-3.0, -3.0, -3.0));
-    assert!(d - e == d);
+    assert_eq!(a + b, Vec2::new(4.0, 6.0));
+    assert_eq!(a - b, Vec2::new(-2.0, -2.0));
+    assert_eq!(c + d, Vec3::new(5.0, 7.0, 9.0));
+    assert_eq!(c - d, Vec3::new(-3.0, -3.0, -3.0));
+    assert_eq!(d - e, d);
 
     a += b;
     c += d;
 
-    assert!(a == Vec2::new(4.0, 6.0));
-    assert!(c == Vec3::new(5.0, 7.0, 9.0));
+    assert_eq!(a, Vec2::new(4.0, 6.0));
+    assert_eq!(c, Vec3::new(5.0, 7.0, 9.0));
 
     a -= b;
     c -= d;
 
-    assert!(a == Vec2::new(1.0, 2.0));
-    assert!(c == Vec3::new(1.0, 2.0, 3.0));
+    assert_eq!(a, Vec2::new(1.0, 2.0));
+    assert_eq!(c, Vec3::new(1.0, 2.0, 3.0));
 }
 
 #[test]
@@ -259,28 +375,28 @@ fn test_vec_mul_div() {
     let mut b = Vec3::new(1.0, 2.0, 3.0);
     let mut c = Vec3::new(0.0, 0.0, 0.0);
 
-    assert!(a * 1.5 == Vec2::new(1.5, 3.0));
-    assert!(b * 1.5 == Vec3::new(1.5, 3.0, 4.5));
-    assert!(c * 1.5 == Vec3::new(0.0, 0.0, 0.0));
-    assert!((a * 1.5) / 1.5 == Vec2::new(1.0, 2.0));
-    assert!((b * 1.5) / 1.5 == Vec3::new(1.0, 2.0, 3.0));
-    assert!((c * 1.5) / 1.5 == Vec3::new(0.0, 0.0, 0.0));
+    assert_eq!(a * 1.5, Vec2::new(1.5, 3.0));
+    assert_eq!(b * 1.5, Vec3::new(1.5, 3.0, 4.5));
+    assert_eq!(c * 1.5, Vec3::new(0.0, 0.0, 0.0));
+    assert_eq!((a * 1.5) / 1.5, Vec2::new(1.0, 2.0));
+    assert_eq!((b * 1.5) / 1.5, Vec3::new(1.0, 2.0, 3.0));
+    assert_eq!((c * 1.5) / 1.5, Vec3::new(0.0, 0.0, 0.0));
 
     a *= 2.0;
     b *= 2.0;
     c *= 2.0;
 
-    assert!(a == Vec2::new(2.0, 4.0));
-    assert!(b == Vec3::new(2.0, 4.0, 6.0));
-    assert!(c == Vec3::new(0.0, 0.0, 0.0));
+    assert_eq!(a, Vec2::new(2.0, 4.0));
+    assert_eq!(b, Vec3::new(2.0, 4.0, 6.0));
+    assert_eq!(c, Vec3::new(0.0, 0.0, 0.0));
 
     a /= 2.0;
     b /= 2.0;
     c /= 2.0;
 
-    assert!(a == Vec2::new(1.0, 2.0));
-    assert!(b == Vec3::new(1.0, 2.0, 3.0));
-    assert!(c == Vec3::new(0.0, 0.0, 0.0));
+    assert_eq!(a, Vec2::new(1.0, 2.0));
+    assert_eq!(b, Vec3::new(1.0, 2.0, 3.0));
+    assert_eq!(c, Vec3::new(0.0, 0.0, 0.0));
 }
 
 #[test]
@@ -288,14 +404,14 @@ fn test_vec2_cross_z() {
     let a = Vec2::new(1.0, 0.0);
     let b = Vec2::new(0.0, 1.0);
 
-    assert!(a.cross_z(b) == 1.0);
-    assert!(b.cross_z(a) == -1.0);
+    assert_eq!(a.cross_z(b), 1.0);
+    assert_eq!(b.cross_z(a), -1.0);
 
     let a = Vec2::new(1.0, 0.0);
     let b = Vec2::new(2.0, 2.0);
 
-    assert!(a.cross_z(b) == 2.0);
-    assert!(b.cross_z(a) == -2.0);
+    assert_eq!(a.cross_z(b), 2.0);
+    assert_eq!(b.cross_z(a), -2.0);
 }
 
 #[test]
@@ -303,40 +419,144 @@ fn test_vec3_cross() {
     let a = Vec3::new(1.0, 0.0, 0.0);
     let b = Vec3::new(0.0, 1.0, 0.0);
 
-    assert!(a.cross(b) == Vec3::new(0.0, 0.0, 1.0));
+    assert_eq!(a.cross(b), Vec3::new(0.0, 0.0, 1.0));
 
     let a = Vec3::new(1.5, 2.5, -1.0);
     let b = Vec3::new(2.0, -3.0, 4.0);
 
-    assert!(a.cross(b) == Vec3::new(7.0, -8.0, -9.5));
+    assert_eq!(a.cross(b), Vec3::new(7.0, -8.0, -9.5));
 
     let a = Vec3::new(1.0, 0.0, 0.0);
     let b = Vec3::new(2.0, 2.0, 0.0);
 
-    assert!(a.cross(b) == Vec3::new(0.0, 0.0, 2.0));
-    assert!(b.cross(a) == Vec3::new(0.0, 0.0, -2.0));
+    assert_eq!(a.cross(b), Vec3::new(0.0, 0.0, 2.0));
+    assert_eq!(b.cross(a), Vec3::new(0.0, 0.0, -2.0));
 }
 
 #[test]
 fn test_vec_dot() {
-    assert!(Vec2::new(1.0, 0.0).dot(Vec2::new(0.0, 1.0)) == 0.0);
-    assert!(Vec2::new(1.0, 1.0).dot(Vec2::new(0.0, 1.0)) == 1.0);
-    assert!(Vec2::new(2.0, 1.0).dot(Vec2::new(0.0, 1.0)) == 1.0);
+    assert_eq!(Vec2::new(1.0, 0.0).dot(Vec2::new(0.0, 1.0)), 0.0);
+    assert_eq!(Vec2::new(1.0, 1.0).dot(Vec2::new(0.0, 1.0)), 1.0);
+    assert_eq!(Vec2::new(2.0, 1.0).dot(Vec2::new(0.0, 1.0)), 1.0);
 
-    assert!(Vec3::new(1.0, 0.0, 0.0).dot(Vec3::new(0.0, 1.0, 0.0)) == 0.0);
-    assert!(Vec3::new(1.0, 1.0, 1.0).dot(Vec3::new(0.0, 1.0, 1.0)) == 2.0);
-    assert!(Vec3::new(0.0, 0.0, 4.0).dot(Vec3::new(0.0, 0.0, 5.0)) == 20.0);
+    assert_eq!(Vec3::new(1.0, 0.0, 0.0).dot(Vec3::new(0.0, 1.0, 0.0)), 0.0);
+    assert_eq!(Vec3::new(1.0, 1.0, 1.0).dot(Vec3::new(0.0, 1.0, 1.0)), 2.0);
+    assert_eq!(Vec3::new(0.0, 0.0, 4.0).dot(Vec3::new(0.0, 0.0, 5.0)), 20.0);
 }
 
 #[test]
 fn test_vec_unit_norm() {
-    assert!(Vec2::new(1.0, 0.0).unit_norm() == Vec2::new(1.0, 0.0));
-    assert!(Vec2::new(2.0, 0.0).unit_norm() == Vec2::new(1.0, 0.0));
-    assert!(Vec2::new(2.0, 2.0).unit_norm() == Vec2::new(0.70710677, 0.70710677));
+    assert_eq!(Vec2::new(1.0, 0.0).unit_norm(), Vec2::new(1.0, 0.0));
+    assert_eq!(Vec2::new(2.0, 0.0).unit_norm(), Vec2::new(1.0, 0.0));
+    assert_eq!(
+        Vec2::new(2.0, 2.0).unit_norm(),
+        Vec2::new(0.70710677, 0.70710677)
+    );
 
-    assert!(Vec3::new(1.0, 0.0, 0.0).unit_norm() == Vec3::new(1.0, 0.0, 0.0));
-    assert!(Vec3::new(2.0, 0.0, 0.0).unit_norm() == Vec3::new(1.0, 0.0, 0.0));
-    assert!(Vec3::new(2.0, 2.0, 0.0).unit_norm() == Vec3::new(0.70710677, 0.70710677, 0.0));
-    assert!(Vec3::new(0.0, 0.0, 1.0).unit_norm() == Vec3::new(0.0, 0.0, 1.0));
-    assert!(Vec3::new(2.0, 2.0, 1.0).unit_norm() == Vec3::new(0.66666666, 0.66666666, 0.33333333));
+    assert_eq!(
+        Vec3::new(1.0, 0.0, 0.0).unit_norm(),
+        Vec3::new(1.0, 0.0, 0.0)
+    );
+    assert_eq!(
+        Vec3::new(2.0, 0.0, 0.0).unit_norm(),
+        Vec3::new(1.0, 0.0, 0.0)
+    );
+    assert_eq!(
+        Vec3::new(2.0, 2.0, 0.0).unit_norm(),
+        Vec3::new(0.70710677, 0.70710677, 0.0)
+    );
+    assert_eq!(
+        Vec3::new(0.0, 0.0, 1.0).unit_norm(),
+        Vec3::new(0.0, 0.0, 1.0)
+    );
+    assert_eq!(
+        Vec3::new(2.0, 2.0, 1.0).unit_norm(),
+        Vec3::new(0.66666666, 0.66666666, 0.33333333)
+    );
+}
+
+//================================================
+
+#[test]
+fn test_vec4_len() {
+    assert_eq!(Vec4::new(3.0, 4.0, 0.0, 0.0).len(), 5.0);
+    assert_eq!(Vec4::new(0.0, 0.0, 4.0, 3.0).len(), 5.0);
+}
+
+#[test]
+fn test_vec4_add_sub() {
+    let mut c = Vec4::new(1.0, 2.0, 3.0, 1.0);
+    let d = Vec4::new(4.0, 5.0, 6.0, 2.0);
+    let e = Vec4::new(0.0, 0.0, 0.0, 0.0);
+
+    assert_eq!(c + d, Vec4::new(5.0, 7.0, 9.0, 3.0));
+    assert_eq!(c - d, Vec4::new(-3.0, -3.0, -3.0, -1.0));
+    assert_eq!(d - e, d);
+
+    c += d;
+
+    assert_eq!(c, Vec4::new(5.0, 7.0, 9.0, 3.0));
+
+    c -= d;
+
+    assert_eq!(c, Vec4::new(1.0, 2.0, 3.0, 1.0));
+}
+
+#[test]
+fn test_vec4_mul_div() {
+    let mut b = Vec4::new(1.0, 2.0, 3.0, 4.0);
+    let mut c = Vec4::new(0.0, 0.0, 0.0, 0.0);
+
+    assert_eq!(b * 1.5, Vec4::new(1.5, 3.0, 4.5, 6.0));
+    assert_eq!(c * 1.5, Vec4::new(0.0, 0.0, 0.0, 0.0));
+    assert_eq!((b * 1.5) / 1.5, Vec4::new(1.0, 2.0, 3.0, 4.0));
+    assert_eq!((c * 1.5) / 1.5, Vec4::new(0.0, 0.0, 0.0, 0.0));
+
+    b *= 2.0;
+    c *= 2.0;
+
+    assert_eq!(b, Vec4::new(2.0, 4.0, 6.0, 8.0));
+    assert_eq!(c, Vec4::new(0.0, 0.0, 0.0, 0.0));
+
+    b /= 2.0;
+    c /= 2.0;
+
+    assert_eq!(b, Vec4::new(1.0, 2.0, 3.0, 4.0));
+    assert_eq!(c, Vec4::new(0.0, 0.0, 0.0, 0.0));
+}
+
+#[test]
+fn test_vec4_dot() {
+    assert_eq!(
+        Vec4::new(1.0, 0.0, 0.0, 1.0).dot(Vec4::new(0.0, 1.0, 0.0, 0.0)),
+        0.0
+    );
+    assert_eq!(
+        Vec4::new(1.0, 1.0, 1.0, 1.0).dot(Vec4::new(0.0, 1.0, 1.0, 1.0)),
+        3.0
+    );
+    assert_eq!(
+        Vec4::new(0.0, 0.0, 4.0, 1.0).dot(Vec4::new(0.0, 0.0, 5.0, 2.0)),
+        22.0
+    );
+}
+
+#[test]
+fn test_vec4_unit_norm() {
+    assert_eq!(
+        Vec4::new(0.0, 0.0, 0.0, 1.0).unit_norm(),
+        Vec4::new(0.0, 0.0, 0.0, 1.0)
+    );
+    assert_eq!(
+        Vec4::new(0.0, 0.0, 0.0, 2.0).unit_norm(),
+        Vec4::new(0.0, 0.0, 0.0, 1.0)
+    );
+    assert_eq!(
+        Vec4::new(0.0, 0.0, 2.0, 2.0).unit_norm(),
+        Vec4::new(0.0, 0.0, 0.70710677, 0.70710677)
+    );
+    assert_eq!(
+        Vec4::new(0.0, 2.0, 2.0, 1.0).unit_norm(),
+        Vec4::new(0.0, 0.66666666, 0.66666666, 0.33333333)
+    );
 }
