@@ -135,6 +135,10 @@ impl Vec3 {
             z: self.z / len,
         }
     }
+
+    pub fn to_vec4(&self) -> Vec4 {
+        Vec4::new(self.x, self.y, self.z, 1.0)
+    }
 }
 
 impl Add for Vec3 {

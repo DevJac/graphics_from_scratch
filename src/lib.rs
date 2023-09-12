@@ -10,8 +10,12 @@ use rand::{seq::SliceRandom, Rng};
 use sdl2::pixels::Color;
 use vec::{Vec2, Vec3};
 
-const CAMERA_DIST: f32 = 5.0;
-const SCALE: f32 = 200.0;
+const CAMERA_LOCATION: Vec3 = Vec3::new(0.0, 0.0, -5.0);
+const ASPECT_RATIO: f32 = 9.0 / 21.0;
+const F: f32 = 1.732_051; // (1 / (tan(FOV / 2))); FOV = 60 degrees
+const Z_NEAR: f32 = 1.0;
+const Z_FAR: f32 = 10.0;
+const Z_RATIO: f32 = Z_FAR / (Z_FAR - Z_NEAR);
 
 pub fn get_cube_mesh() -> Mesh {
     use std::fs::File;
@@ -50,10 +54,35 @@ pub fn get_cube_mesh() -> Mesh {
 }
 
 fn project_point_to_screen_space(pixel_renderer: &mut PixelRenderer, p: Vec3) -> Vec2 {
+    let projection_matrix = Mat4::new(
+        // Row 1
+        ASPECT_RATIO * F,
+        0.0,
+        0.0,
+        0.0,
+        // rOW 2
+        0.0,
+        F,
+        0.0,
+        0.0,
+        // rOW 3
+        0.0,
+        0.0,
+        Z_RATIO,
+        -Z_RATIO * Z_NEAR,
+        // rOW 4
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+    );
+
+    let p = projection_matrix * ((p - CAMERA_LOCATION).to_vec4());
+
     let half_width: f32 = pixel_renderer.width as f32 / 2.0;
     let half_height: f32 = pixel_renderer.height as f32 / 2.0;
-    let centered_x = p.x / (p.z + CAMERA_DIST) * SCALE + half_width;
-    let centered_y = p.y / (p.z + CAMERA_DIST) * SCALE + half_height;
+    let centered_x = (p.x / p.w) * half_width + half_width;
+    let centered_y = (p.y / p.w) * half_height + half_height;
     Vec2::new(centered_x, centered_y)
 }
 
@@ -90,7 +119,7 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions,
 
         let face_normal = (vert_b - vert_a).cross(vert_c - vert_a);
         if draw_options.backface_culling {
-            let vec_to_camera = Vec3::new(0.0, 0.0, -CAMERA_DIST) - vert_a;
+            let vec_to_camera = CAMERA_LOCATION - vert_a;
             if face_normal.dot(vec_to_camera) <= 0.0 {
                 continue;
             }
