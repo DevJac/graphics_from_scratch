@@ -1,6 +1,6 @@
 use graphics_from_scratch::mat::Mat4;
 use graphics_from_scratch::pixel_renderer::PixelRenderer;
-use graphics_from_scratch::vec::Vec2;
+use graphics_from_scratch::vec::{Vec2, Vec3};
 use graphics_from_scratch::{draw_line, draw_mesh, get_cube_mesh, DrawOptions};
 use rand::Rng;
 use sdl2::pixels::Color;
@@ -115,6 +115,20 @@ fn math_benchmarks(c: &mut criterion::Criterion) {
 
     bench_group.bench_function("mat4 mat4 mul", |b| {
         b.iter(|| mat_a * mat_b);
+    });
+
+    bench_group.bench_function("project_point_to_screen_space", |b| {
+        b.iter(|| {
+            graphics_from_scratch::project_point_to_screen_space(
+                rng.gen_range(0..300),
+                rng.gen_range(0..300),
+                Vec3::new(
+                    rng.gen_range(-3.0..3.0),
+                    rng.gen_range(-3.0..3.0),
+                    rng.gen_range(-3.0..3.0),
+                ),
+            )
+        })
     });
 
     bench_group.finish();

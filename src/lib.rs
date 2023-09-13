@@ -53,24 +53,24 @@ pub fn get_cube_mesh() -> Mesh {
     }
 }
 
-fn project_point_to_screen_space(pixel_renderer: &mut PixelRenderer, p: Vec3) -> Vec2 {
+pub fn project_point_to_screen_space(screen_width: u32, screen_height: u32, p: Vec3) -> Vec2 {
     let projection_matrix = Mat4::new(
         // Row 1
         ASPECT_RATIO * F,
         0.0,
         0.0,
         0.0,
-        // rOW 2
+        // Row 2
         0.0,
         F,
         0.0,
         0.0,
-        // rOW 3
+        // Row 3
         0.0,
         0.0,
         Z_RATIO,
         -Z_RATIO * Z_NEAR,
-        // rOW 4
+        // Row 4
         0.0,
         0.0,
         1.0,
@@ -79,8 +79,8 @@ fn project_point_to_screen_space(pixel_renderer: &mut PixelRenderer, p: Vec3) ->
 
     let p = projection_matrix * ((p - CAMERA_LOCATION).to_vec4());
 
-    let half_width: f32 = pixel_renderer.width as f32 / 2.0;
-    let half_height: f32 = pixel_renderer.height as f32 / 2.0;
+    let half_width: f32 = screen_width as f32 / 2.0;
+    let half_height: f32 = screen_height as f32 / 2.0;
     let centered_x = (p.x / p.w) * half_width + half_width;
     let centered_y = (p.y / p.w) * half_height + half_height;
     Vec2::new(centered_x, centered_y)
@@ -125,9 +125,9 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions,
             }
         }
 
-        let pa = project_point_to_screen_space(pixel_renderer, vert_a);
-        let pb = project_point_to_screen_space(pixel_renderer, vert_b);
-        let pc = project_point_to_screen_space(pixel_renderer, vert_c);
+        let pa = project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_a);
+        let pb = project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_b);
+        let pc = project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_c);
 
         if draw_options.fill_triangles {
             draw_triangle(pixel_renderer, face.color, pa, pb, pc);
