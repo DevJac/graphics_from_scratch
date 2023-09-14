@@ -11,6 +11,7 @@ use sdl2::pixels::Color;
 use vec::{Vec2, Vec3};
 
 const CAMERA_LOCATION: Vec3 = Vec3::new(0.0, 0.0, -5.0);
+const LIGHT_DIRECTION: Vec3 = Vec3::new(-100.0, -100.0, -50.0);
 const ASPECT_RATIO: f32 = 9.0 / 21.0;
 const F: f32 = 1.732_051; // (1 / (tan(FOV / 2))); FOV = 60 degrees
 const Z_NEAR: f32 = 1.0;
@@ -93,12 +94,19 @@ pub struct DrawOptions {
     pub pause_rendering: bool,
 }
 
+fn color_mul(color: Color, multiplier: f32) -> Color {
+    let r = (color.r as f32 * multiplier).clamp(0.0, 255.0).round() as u8;
+    let g = (color.g as f32 * multiplier).clamp(0.0, 255.0).round() as u8;
+    let b = (color.b as f32 * multiplier).clamp(0.0, 255.0).round() as u8;
+    Color::RGB(r, g, b)
+}
+
 pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions, mesh: &mut Mesh) {
     let mut rng = rand::thread_rng();
     if !draw_options.pause_rendering && rng.gen::<f32>() < 0.03 {
-        mesh.rotation.x = mesh.rotation.x * 0.99 + rng.gen_range(-0.03..0.03);
-        mesh.rotation.y = mesh.rotation.y * 0.99 + rng.gen_range(-0.03..0.03);
-        mesh.rotation.z = mesh.rotation.z * 0.99 + rng.gen_range(-0.03..0.03);
+        mesh.rotation.x = mesh.rotation.x * 0.9999 + rng.gen_range(-0.03..0.03);
+        mesh.rotation.y = mesh.rotation.y * 0.9999 + rng.gen_range(-0.03..0.03);
+        mesh.rotation.z = mesh.rotation.z * 0.9999 + rng.gen_range(-0.03..0.03);
     }
 
     if !draw_options.pause_rendering {
@@ -116,21 +124,31 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions,
         let vert_a = mesh.vertices[face.a];
         let vert_b = mesh.vertices[face.b];
         let vert_c = mesh.vertices[face.c];
+        let vert_center = (vert_a + vert_b + vert_c) / 3.0;
 
         let face_normal = (vert_b - vert_a).cross(vert_c - vert_a);
         if draw_options.backface_culling {
-            let vec_to_camera = CAMERA_LOCATION - vert_a;
+            let vec_to_camera = CAMERA_LOCATION - vert_center;
             if face_normal.dot(vec_to_camera) <= 0.0 {
                 continue;
             }
         }
+
+        let is_facing_light = face_normal.unit_norm().dot(LIGHT_DIRECTION.unit_norm());
+        let light_intensity = is_facing_light / 2.0 + 1.0;
 
         let pa = project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_a);
         let pb = project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_b);
         let pc = project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_c);
 
         if draw_options.fill_triangles {
-            draw_triangle(pixel_renderer, face.color, pa, pb, pc);
+            draw_triangle(
+                pixel_renderer,
+                color_mul(face.color, light_intensity),
+                pa,
+                pb,
+                pc,
+            );
         }
 
         if draw_options.draw_wireframe {
