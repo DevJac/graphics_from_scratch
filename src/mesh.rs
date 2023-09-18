@@ -12,15 +12,11 @@ pub struct Face {
 
 impl Face {
     pub fn new(a: usize, b: usize, c: usize) -> Self {
-        let mut rng = rand::thread_rng();
-        let cr = rng.gen_range(0..255);
-        let cg = rng.gen_range(0..255);
-        let cb = rng.gen_range(0..255);
         Self {
             a,
             b,
             c,
-            color: Color::RGB(cr, cg, cb),
+            color: Color::RGB(200, 200, 200),
         }
     }
 }

@@ -25,7 +25,7 @@ pub fn get_cube_mesh() -> Mesh {
     let mut vertices: Vec<Vec3> = Vec::new();
     let mut faces: Vec<Face> = Vec::new();
 
-    let file = File::open("./assets/cube.obj").unwrap();
+    let file = File::open("./assets/f22.obj").unwrap();
     let reader = BufReader::new(file);
 
     for line in reader.lines() {
@@ -104,9 +104,9 @@ fn color_mul(color: Color, multiplier: f32) -> Color {
 pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions, mesh: &mut Mesh) {
     let mut rng = rand::thread_rng();
     if !draw_options.pause_rendering && rng.gen::<f32>() < 0.03 {
-        mesh.rotation.x = mesh.rotation.x * 0.9999 + rng.gen_range(-0.03..0.03);
-        mesh.rotation.y = mesh.rotation.y * 0.9999 + rng.gen_range(-0.03..0.03);
-        mesh.rotation.z = mesh.rotation.z * 0.9999 + rng.gen_range(-0.03..0.03);
+        mesh.rotation.x = mesh.rotation.x * 0.9999 + rng.gen_range(-0.05..0.05);
+        mesh.rotation.y = mesh.rotation.y * 0.9999 + rng.gen_range(-0.05..0.05);
+        mesh.rotation.z = mesh.rotation.z * 0.9999 + rng.gen_range(-0.05..0.05);
     }
 
     if !draw_options.pause_rendering {
@@ -135,7 +135,10 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions,
         }
 
         let is_facing_light = face_normal.unit_norm().dot(LIGHT_DIRECTION.unit_norm());
-        let light_intensity = is_facing_light / 2.0 + 1.0;
+        let (intensity_min, intensity_max) = (0.2, 1.2);
+        let light_intensity = ((is_facing_light + 1.0) / (1.0 + 1.0))
+            * (intensity_max - intensity_min)
+            + intensity_min;
 
         let pa = project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_a);
         let pb = project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_b);
