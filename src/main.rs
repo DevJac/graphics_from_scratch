@@ -1,12 +1,13 @@
+use graphics_from_scratch::mesh::Mesh;
 use graphics_from_scratch::pixel_renderer::PixelRenderer;
-use graphics_from_scratch::{draw_mesh, get_cube_mesh, DrawOptions};
+use graphics_from_scratch::{draw_mesh, DrawOptions};
 
 fn main() {
     let width = 860;
     let height = 360;
     assert!(width == 3440 / 4);
     assert!(height == 1440 / 4);
-    let mut cube_mesh = get_cube_mesh();
+    let mut mesh = Mesh::load_mesh("./assets/f22.obj");
     let mut pixel_renderer = PixelRenderer::new(width, height);
     let mut draw_options = DrawOptions {
         draw_wireframe: true,
@@ -50,7 +51,7 @@ fn main() {
             }
         }
 
-        draw_mesh(&mut pixel_renderer, &draw_options, &mut cube_mesh);
+        draw_mesh(&mut pixel_renderer, &draw_options, &mut mesh);
         pixel_renderer.render();
     }
 }

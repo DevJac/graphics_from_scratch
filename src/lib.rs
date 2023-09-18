@@ -4,7 +4,7 @@ pub mod pixel_renderer;
 pub mod vec;
 
 use mat::Mat4;
-use mesh::{Face, Mesh};
+use mesh::Mesh;
 use pixel_renderer::PixelRenderer;
 use rand::{seq::SliceRandom, Rng};
 use sdl2::pixels::Color;
@@ -17,42 +17,6 @@ const F: f32 = 1.732_051; // (1 / (tan(FOV / 2))); FOV = 60 degrees
 const Z_NEAR: f32 = 1.0;
 const Z_FAR: f32 = 10.0;
 const Z_RATIO: f32 = Z_FAR / (Z_FAR - Z_NEAR);
-
-pub fn get_cube_mesh() -> Mesh {
-    use std::fs::File;
-    use std::io::{BufRead, BufReader};
-
-    let mut vertices: Vec<Vec3> = Vec::new();
-    let mut faces: Vec<Face> = Vec::new();
-
-    let file = File::open("./assets/f22.obj").unwrap();
-    let reader = BufReader::new(file);
-
-    for line in reader.lines() {
-        let line = line.unwrap();
-        let words: Vec<&str> = line.split_whitespace().collect();
-        if words.len() == 4 {
-            if words[0] == "v" {
-                vertices.push(Vec3::new(
-                    words[1].parse().unwrap(),
-                    words[2].parse().unwrap(),
-                    words[3].parse().unwrap(),
-                ));
-            }
-            if words[0] == "f" {
-                let a: usize = words[1].split('/').next().unwrap().parse().unwrap();
-                let b: usize = words[2].split('/').next().unwrap().parse().unwrap();
-                let c: usize = words[3].split('/').next().unwrap().parse().unwrap();
-                faces.push(Face::new(a - 1, b - 1, c - 1));
-            }
-        }
-    }
-    Mesh {
-        vertices,
-        faces,
-        rotation: Vec3::new(0.0, 0.0, 0.0),
-    }
-}
 
 pub fn project_point_to_screen_space(screen_width: u32, screen_height: u32, p: Vec3) -> Vec2 {
     let projection_matrix = Mat4::new(
