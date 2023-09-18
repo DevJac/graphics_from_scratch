@@ -1,6 +1,6 @@
 use graphics_from_scratch::mesh::Mesh;
 use graphics_from_scratch::pixel_renderer::PixelRenderer;
-use graphics_from_scratch::{draw_mesh, DrawOptions};
+use graphics_from_scratch::{draw_mesh, DrawOptions, TriangleFill};
 
 fn main() {
     let width = 860;
@@ -11,7 +11,7 @@ fn main() {
     let mut pixel_renderer = PixelRenderer::new(width, height);
     let mut draw_options = DrawOptions {
         draw_wireframe: true,
-        fill_triangles: true,
+        triangle_fill: TriangleFill::Texture,
         backface_culling: true,
         pause_rendering: true,
     };
@@ -32,9 +32,11 @@ fn main() {
                 sdl2::event::Event::KeyDown {
                     keycode: Some(sdl2::keyboard::Keycode::Num2),
                     ..
-                } => {
-                    draw_options.fill_triangles = !draw_options.fill_triangles;
-                }
+                } => match draw_options.triangle_fill {
+                    TriangleFill::None => draw_options.triangle_fill = TriangleFill::Color,
+                    TriangleFill::Color => draw_options.triangle_fill = TriangleFill::Texture,
+                    TriangleFill::Texture => draw_options.triangle_fill = TriangleFill::None,
+                },
                 sdl2::event::Event::KeyDown {
                     keycode: Some(sdl2::keyboard::Keycode::Num3),
                     ..

@@ -51,9 +51,16 @@ pub fn project_point_to_screen_space(screen_width: u32, screen_height: u32, p: V
     Vec2::new(centered_x, centered_y)
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum TriangleFill {
+    None,
+    Color,
+    Texture,
+}
+
 pub struct DrawOptions {
     pub draw_wireframe: bool,
-    pub fill_triangles: bool,
+    pub triangle_fill: TriangleFill,
     pub backface_culling: bool,
     pub pause_rendering: bool,
 }
@@ -88,15 +95,19 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions,
         let vert_a = mesh.vertices[face.a];
         let vert_b = mesh.vertices[face.b];
         let vert_c = mesh.vertices[face.c];
-        let vert_center = (vert_a + vert_b + vert_c) / 3.0;
 
         let face_normal = (vert_b - vert_a).cross(vert_c - vert_a);
         if draw_options.backface_culling {
-            let vec_to_camera = CAMERA_LOCATION - vert_center;
+            let vec_to_camera = CAMERA_LOCATION - vert_a;
             if face_normal.dot(vec_to_camera) <= 0.0 {
                 continue;
             }
         }
+
+        let uv_a = mesh.uvs[face.a_uv];
+        let uv_b = mesh.uvs[face.b_uv];
+        let uv_c = mesh.uvs[face.c_uv];
+        // TODO: Do something with UVs
 
         let is_facing_light = face_normal.unit_norm().dot(LIGHT_DIRECTION.unit_norm());
         let (intensity_min, intensity_max) = (0.2, 1.2);
@@ -108,13 +119,24 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions,
         let pb = project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_b);
         let pc = project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_c);
 
-        if draw_options.fill_triangles {
-            draw_triangle(
+        if draw_options.triangle_fill == TriangleFill::Color {
+            draw_triangle_color(
                 pixel_renderer,
                 color_mul(face.color, light_intensity),
                 pa,
                 pb,
                 pc,
+            );
+        } else if draw_options.triangle_fill == TriangleFill::Texture {
+            draw_triangle_texture(
+                pixel_renderer,
+                light_intensity,
+                pa,
+                pb,
+                pc,
+                uv_a,
+                uv_b,
+                uv_c,
             );
         }
 
@@ -124,7 +146,7 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions,
             draw_line(pixel_renderer, Color::RGB(255, 255, 255), pc, pa);
         }
 
-        if !draw_options.fill_triangles && !draw_options.draw_wireframe {
+        if draw_options.triangle_fill == TriangleFill::None && !draw_options.draw_wireframe {
             pixel_renderer.set_pixel(
                 pa.x.round() as u32,
                 pa.y.round() as u32,
@@ -183,9 +205,15 @@ fn cross_edge(p: Vec2, vert: Vec2, edge_from_vert: Vec2) -> f32 {
     cross_z.signum()
 }
 
-pub fn draw_triangle(pixel_renderer: &mut PixelRenderer, color: Color, a: Vec2, b: Vec2, c: Vec2) {
-    let (x_min, x_max) = min_max(a.x, b.x, c.x);
-    let (y_min, y_max) = min_max(a.y, b.y, c.y);
+pub fn draw_triangle_color(
+    pixel_renderer: &mut PixelRenderer,
+    color: Color,
+    a: Vec2,
+    b: Vec2,
+    c: Vec2,
+) {
+    let (x_min, x_max): (i32, i32) = min_max(a.x, b.x, c.x);
+    let (y_min, y_max): (i32, i32) = min_max(a.y, b.y, c.y);
 
     let x_min = x_min.max(0);
     let y_min = y_min.max(0);
@@ -203,6 +231,62 @@ pub fn draw_triangle(pixel_renderer: &mut PixelRenderer, color: Color, a: Vec2, 
 
             if in_a == in_b && in_a == in_c {
                 pixel_renderer.set_pixel(x as u32, y as u32, color);
+            }
+        }
+    }
+}
+
+fn interpolate_uv(p: Vec2, a: Vec2, b: Vec2, c: Vec2, a_uv: Vec2, b_uv: Vec2, c_uv: Vec2) -> Vec2 {
+    // TODO: We need to correct the perspective using z, but first we must pass z to this function somehow.
+    let a_weight = ((p - b).cross_z(p - c)) / ((a - b).cross_z(a - c));
+    let b_weight = ((p - a).cross_z(p - c)) / ((b - a).cross_z(b - c));
+    let c_weight = ((p - a).cross_z(p - b)) / ((c - a).cross_z(c - b));
+
+    debug_assert!((-0.001..=1.001).contains(&a_weight));
+    debug_assert!((-0.001..=1.001).contains(&b_weight));
+    debug_assert!((-0.001..=1.001).contains(&c_weight));
+    debug_assert!(0.999 < a_weight + b_weight + c_weight && a_weight + b_weight + c_weight < 1.001);
+
+    (a_uv * a_weight) + (b_uv * b_weight) + (c_uv * c_weight)
+}
+
+pub fn draw_triangle_texture(
+    pixel_renderer: &mut PixelRenderer,
+    light_intensity: f32,
+    a: Vec2,
+    b: Vec2,
+    c: Vec2,
+    a_uv: Vec2,
+    b_uv: Vec2,
+    c_uv: Vec2,
+) {
+    // TODO: Accept and use a texture
+    let (x_min, x_max): (i32, i32) = min_max(a.x, b.x, c.x);
+    let (y_min, y_max): (i32, i32) = min_max(a.y, b.y, c.y);
+
+    let x_min = x_min.max(0);
+    let y_min = y_min.max(0);
+
+    let edge_from_a = b - a;
+    let edge_from_b = c - b;
+    let edge_from_c = a - c;
+
+    for x in x_min..=x_max {
+        for y in y_min..=y_max {
+            let p = Vec2::new(x as f32, y as f32);
+            let in_a = cross_edge(p, a, edge_from_a);
+            let in_b = cross_edge(p, b, edge_from_b);
+            let in_c = cross_edge(p, c, edge_from_c);
+
+            if in_a == in_b && in_a == in_c {
+                let uv = interpolate_uv(p, a, b, c, a_uv, b_uv, c_uv);
+                let r: u8 = (uv.x * 127.0).round() as u8;
+                let b: u8 = (uv.y * 127.0).round() as u8;
+                pixel_renderer.set_pixel(
+                    x as u32,
+                    y as u32,
+                    color_mul(Color::RGB(255 - b, 255 - r - b, 255 - r), light_intensity),
+                );
             }
         }
     }
