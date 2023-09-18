@@ -27,7 +27,7 @@ pub fn project_point_to_screen_space(screen_width: u32, screen_height: u32, p: V
         0.0,
         // Row 2
         0.0,
-        F,
+        -F,
         0.0,
         0.0,
         // Row 3
@@ -107,7 +107,6 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions,
         let uv_a = mesh.uvs[face.a_uv];
         let uv_b = mesh.uvs[face.b_uv];
         let uv_c = mesh.uvs[face.c_uv];
-        // TODO: Do something with UVs
 
         let is_facing_light = face_normal.unit_norm().dot(LIGHT_DIRECTION.unit_norm());
         let (intensity_min, intensity_max) = (0.2, 1.2);
@@ -130,6 +129,7 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions,
         } else if draw_options.triangle_fill == TriangleFill::Texture {
             draw_triangle_texture(
                 pixel_renderer,
+                mesh,
                 light_intensity,
                 pa,
                 pb,
@@ -198,9 +198,7 @@ fn cross_edge(p: Vec2, vert: Vec2, edge_from_vert: Vec2) -> f32 {
     let vert_to_p = p - vert;
     let mut cross_z = edge_from_vert.cross_z(vert_to_p);
     if edge_from_vert.y > 0.0 || (edge_from_vert.y == 0.0 && edge_from_vert.x > 0.0) {
-        cross_z += 0.000_001;
-    } else {
-        cross_z -= 0.000_001;
+        cross_z += 0.01;
     }
     cross_z.signum()
 }
@@ -252,6 +250,7 @@ fn interpolate_uv(p: Vec2, a: Vec2, b: Vec2, c: Vec2, a_uv: Vec2, b_uv: Vec2, c_
 
 pub fn draw_triangle_texture(
     pixel_renderer: &mut PixelRenderer,
+    mesh: &Mesh,
     light_intensity: f32,
     a: Vec2,
     b: Vec2,
@@ -280,12 +279,16 @@ pub fn draw_triangle_texture(
 
             if in_a == in_b && in_a == in_c {
                 let uv = interpolate_uv(p, a, b, c, a_uv, b_uv, c_uv);
-                let r: u8 = (uv.x * 127.0).round() as u8;
-                let b: u8 = (uv.y * 127.0).round() as u8;
+                let u = ((mesh.texture.width() - 1) as f32 * uv.x).round() as u32;
+                let v = ((mesh.texture.height() - 1) as f32 * (1.0 - uv.y)).round() as u32;
+                let texture_color = mesh.texture.get_pixel(u, v);
                 pixel_renderer.set_pixel(
                     x as u32,
                     y as u32,
-                    color_mul(Color::RGB(255 - b, 255 - r - b, 255 - r), light_intensity),
+                    color_mul(
+                        Color::RGB(texture_color[0], texture_color[1], texture_color[2]),
+                        light_intensity,
+                    ),
                 );
             }
         }

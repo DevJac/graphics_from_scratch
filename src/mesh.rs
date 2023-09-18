@@ -1,4 +1,5 @@
 use crate::vec::{Vec2, Vec3};
+use image::{ImageBuffer, Rgb};
 use sdl2::pixels::Color;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -31,11 +32,12 @@ pub struct Mesh {
     pub vertices: Vec<Vec3>,
     pub uvs: Vec<Vec2>,
     pub faces: Vec<Face>,
+    pub texture: ImageBuffer<Rgb<u8>, Vec<u8>>,
     pub rotation: Vec3,
 }
 
 impl Mesh {
-    pub fn load_mesh(obj_file_path: &str) -> Self {
+    pub fn load_mesh(obj_file_path: &str, texture_file_path: &str) -> Self {
         use std::fs::File;
         use std::io::{BufRead, BufReader};
 
@@ -79,10 +81,14 @@ impl Mesh {
                 }
             }
         }
+
+        let texture = image::open(texture_file_path).unwrap().into_rgb8();
+
         Mesh {
             vertices,
             uvs,
             faces,
+            texture,
             rotation: Vec3::new(0.0, 0.0, 0.0),
         }
     }

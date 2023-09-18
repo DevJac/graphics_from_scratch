@@ -7,10 +7,10 @@ fn main() {
     let height = 360;
     assert!(width == 3440 / 4);
     assert!(height == 1440 / 4);
-    let mut mesh = Mesh::load_mesh("./assets/f22.obj");
+    let mut mesh = Mesh::load_mesh("./assets/cube.obj", "./assets/cube.png");
     let mut pixel_renderer = PixelRenderer::new(width, height);
     let mut draw_options = DrawOptions {
-        draw_wireframe: true,
+        draw_wireframe: false,
         triangle_fill: TriangleFill::Texture,
         backface_culling: true,
         pause_rendering: true,
