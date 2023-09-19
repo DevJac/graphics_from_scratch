@@ -247,6 +247,10 @@ impl Vec4 {
             w: self.w / len,
         }
     }
+
+    pub fn to_vec2(&self) -> Vec2 {
+        Vec2::new(self.x, self.y)
+    }
 }
 
 impl Add for Vec4 {

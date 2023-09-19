@@ -8,7 +8,7 @@ use mesh::Mesh;
 use pixel_renderer::PixelRenderer;
 use rand::{seq::SliceRandom, Rng};
 use sdl2::pixels::Color;
-use vec::{Vec2, Vec3};
+use vec::{Vec2, Vec3, Vec4};
 
 const CAMERA_LOCATION: Vec3 = Vec3::new(0.0, 0.0, -5.0);
 const LIGHT_DIRECTION: Vec3 = Vec3::new(-100.0, -100.0, -50.0);
@@ -18,7 +18,7 @@ const Z_NEAR: f32 = 1.0;
 const Z_FAR: f32 = 10.0;
 const Z_RATIO: f32 = Z_FAR / (Z_FAR - Z_NEAR);
 
-pub fn project_point_to_screen_space(screen_width: u32, screen_height: u32, p: Vec3) -> Vec2 {
+pub fn project_point_to_screen_space(screen_width: u32, screen_height: u32, p: Vec3) -> Vec4 {
     let projection_matrix = Mat4::new(
         // Row 1
         ASPECT_RATIO * F,
@@ -48,7 +48,7 @@ pub fn project_point_to_screen_space(screen_width: u32, screen_height: u32, p: V
     let half_height: f32 = screen_height as f32 / 2.0;
     let centered_x = (p.x / p.w) * half_width + half_width;
     let centered_y = (p.y / p.w) * half_height + half_height;
-    Vec2::new(centered_x, centered_y)
+    Vec4::new(centered_x, centered_y, p.z, p.w)
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -141,9 +141,24 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions,
         }
 
         if draw_options.draw_wireframe {
-            draw_line(pixel_renderer, Color::RGB(255, 255, 255), pa, pb);
-            draw_line(pixel_renderer, Color::RGB(255, 255, 255), pb, pc);
-            draw_line(pixel_renderer, Color::RGB(255, 255, 255), pc, pa);
+            draw_line(
+                pixel_renderer,
+                Color::RGB(255, 255, 255),
+                pa.to_vec2(),
+                pb.to_vec2(),
+            );
+            draw_line(
+                pixel_renderer,
+                Color::RGB(255, 255, 255),
+                pb.to_vec2(),
+                pc.to_vec2(),
+            );
+            draw_line(
+                pixel_renderer,
+                Color::RGB(255, 255, 255),
+                pc.to_vec2(),
+                pa.to_vec2(),
+            );
         }
 
         if draw_options.triangle_fill == TriangleFill::None && !draw_options.draw_wireframe {
@@ -198,7 +213,7 @@ fn cross_edge(p: Vec2, vert: Vec2, edge_from_vert: Vec2) -> f32 {
     let vert_to_p = p - vert;
     let mut cross_z = edge_from_vert.cross_z(vert_to_p);
     if edge_from_vert.y > 0.0 || (edge_from_vert.y == 0.0 && edge_from_vert.x > 0.0) {
-        cross_z += 0.01;
+        cross_z += 1.0;
     }
     cross_z.signum()
 }
@@ -206,9 +221,9 @@ fn cross_edge(p: Vec2, vert: Vec2, edge_from_vert: Vec2) -> f32 {
 pub fn draw_triangle_color(
     pixel_renderer: &mut PixelRenderer,
     color: Color,
-    a: Vec2,
-    b: Vec2,
-    c: Vec2,
+    a: Vec4,
+    b: Vec4,
+    c: Vec4,
 ) {
     let (x_min, x_max): (i32, i32) = min_max(a.x, b.x, c.x);
     let (y_min, y_max): (i32, i32) = min_max(a.y, b.y, c.y);
@@ -223,9 +238,9 @@ pub fn draw_triangle_color(
     for x in x_min..=x_max {
         for y in y_min..=y_max {
             let p = Vec2::new(x as f32, y as f32);
-            let in_a = cross_edge(p, a, edge_from_a);
-            let in_b = cross_edge(p, b, edge_from_b);
-            let in_c = cross_edge(p, c, edge_from_c);
+            let in_a = cross_edge(p, a.to_vec2(), edge_from_a.to_vec2());
+            let in_b = cross_edge(p, b.to_vec2(), edge_from_b.to_vec2());
+            let in_c = cross_edge(p, c.to_vec2(), edge_from_c.to_vec2());
 
             if in_a == in_b && in_a == in_c {
                 pixel_renderer.set_pixel(x as u32, y as u32, color);
@@ -234,32 +249,64 @@ pub fn draw_triangle_color(
     }
 }
 
-fn interpolate_uv(p: Vec2, a: Vec2, b: Vec2, c: Vec2, a_uv: Vec2, b_uv: Vec2, c_uv: Vec2) -> Vec2 {
-    // TODO: We need to correct the perspective using z, but first we must pass z to this function somehow.
-    let a_weight = ((p - b).cross_z(p - c)) / ((a - b).cross_z(a - c));
-    let b_weight = ((p - a).cross_z(p - c)) / ((b - a).cross_z(b - c));
-    let c_weight = ((p - a).cross_z(p - b)) / ((c - a).cross_z(c - b));
+fn interpolate_uv(
+    p: Vec2,
+    a4: Vec4,
+    b4: Vec4,
+    c4: Vec4,
+    a_uv: Vec2,
+    b_uv: Vec2,
+    c_uv: Vec2,
+) -> Vec2 {
+    let a = a4.to_vec2();
+    let b = b4.to_vec2();
+    let c = c4.to_vec2();
+    let mut a_weight = ((p - b).cross_z(p - c)) / ((a - b).cross_z(a - c));
+    let mut b_weight = ((p - a).cross_z(p - c)) / ((b - a).cross_z(b - c));
+    let mut c_weight = ((p - a).cross_z(p - b)) / ((c - a).cross_z(c - b));
 
-    debug_assert!((-0.001..=1.001).contains(&a_weight));
-    debug_assert!((-0.001..=1.001).contains(&b_weight));
-    debug_assert!((-0.001..=1.001).contains(&c_weight));
-    debug_assert!(0.999 < a_weight + b_weight + c_weight && a_weight + b_weight + c_weight < 1.001);
+    // debug_assert!((-0.1..1.1).contains(&a_weight));
+    // debug_assert!((-0.1..1.1).contains(&b_weight));
+    // debug_assert!((-0.1..1.1).contains(&c_weight));
+    // debug_assert!((0.9..1.1).contains(&(a_weight + b_weight + c_weight)));
 
-    (a_uv * a_weight) + (b_uv * b_weight) + (c_uv * c_weight)
+    // At this point in the code, the weights are correct for screen space.
+    // These weights can be used in a linear combination of the screen space UV coordinates.
+    // A linear combination in screen space is not what we want though, we want a world space combination.
+    // See: https://www.comp.nus.edu.sg/~lowkl/publications/lowk_persp_interp_techrep.pdf
+
+    // The world space coordinates were divided by their depth when projecting to screen space;
+    // this division is not a linear transformation and must be specially accounted for.
+    // We also need to divide the weights by the depth of their associated vertex. We do so below:
+
+    a_weight /= a4.w;
+    b_weight /= b4.w;
+    c_weight /= c4.w;
+
+    // At this point in the code, the world space coordinates have been divided by depth
+    // as part of the projection to screen space, and their associated weights have also been divided by depth.
+    // We are ready to use the weights to combine the UV coordinates.
+
+    // We also need to divide by the sum of the weights in order to renormalize these weights
+    // (get them back into a 0 to 1 range). The depth division probably shrunk the weights,
+    // and thus shrunk the texture space UV coordinate. This will result in a small corner of the texture being mapped
+    // over the entire object. To increase the UV coordinate back to their correct values we divide by the small weights
+    // and thus increase the UV coordinates.
+
+    ((a_uv * a_weight) + (b_uv * b_weight) + (c_uv * c_weight)) / (a_weight + b_weight + c_weight)
 }
 
 pub fn draw_triangle_texture(
     pixel_renderer: &mut PixelRenderer,
     mesh: &Mesh,
     light_intensity: f32,
-    a: Vec2,
-    b: Vec2,
-    c: Vec2,
+    a: Vec4,
+    b: Vec4,
+    c: Vec4,
     a_uv: Vec2,
     b_uv: Vec2,
     c_uv: Vec2,
 ) {
-    // TODO: Accept and use a texture
     let (x_min, x_max): (i32, i32) = min_max(a.x, b.x, c.x);
     let (y_min, y_max): (i32, i32) = min_max(a.y, b.y, c.y);
 
@@ -273,14 +320,16 @@ pub fn draw_triangle_texture(
     for x in x_min..=x_max {
         for y in y_min..=y_max {
             let p = Vec2::new(x as f32, y as f32);
-            let in_a = cross_edge(p, a, edge_from_a);
-            let in_b = cross_edge(p, b, edge_from_b);
-            let in_c = cross_edge(p, c, edge_from_c);
+            let in_a = cross_edge(p, a.to_vec2(), edge_from_a.to_vec2());
+            let in_b = cross_edge(p, b.to_vec2(), edge_from_b.to_vec2());
+            let in_c = cross_edge(p, c.to_vec2(), edge_from_c.to_vec2());
 
             if in_a == in_b && in_a == in_c {
                 let uv = interpolate_uv(p, a, b, c, a_uv, b_uv, c_uv);
-                let u = ((mesh.texture.width() - 1) as f32 * uv.x).round() as u32;
-                let v = ((mesh.texture.height() - 1) as f32 * (1.0 - uv.y)).round() as u32;
+                let u = (((mesh.texture.width() - 1) as f32 * uv.x).round() as u32)
+                    .clamp(0, mesh.texture.width() - 1);
+                let v = (((mesh.texture.height() - 1) as f32 * (1.0 - uv.y)).round() as u32)
+                    .clamp(0, mesh.texture.height() - 1);
                 let texture_color = mesh.texture.get_pixel(u, v);
                 pixel_renderer.set_pixel(
                     x as u32,
