@@ -141,24 +141,9 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions,
         }
 
         if draw_options.draw_wireframe {
-            draw_line(
-                pixel_renderer,
-                Color::RGB(255, 255, 255),
-                pa.to_vec2(),
-                pb.to_vec2(),
-            );
-            draw_line(
-                pixel_renderer,
-                Color::RGB(255, 255, 255),
-                pb.to_vec2(),
-                pc.to_vec2(),
-            );
-            draw_line(
-                pixel_renderer,
-                Color::RGB(255, 255, 255),
-                pc.to_vec2(),
-                pa.to_vec2(),
-            );
+            draw_line(pixel_renderer, Color::RGB(255, 255, 255), pa, pb);
+            draw_line(pixel_renderer, Color::RGB(255, 255, 255), pb, pc);
+            draw_line(pixel_renderer, Color::RGB(255, 255, 255), pc, pa);
         }
 
         if draw_options.triangle_fill == TriangleFill::None && !draw_options.draw_wireframe {
@@ -243,7 +228,9 @@ pub fn draw_triangle_color(
             let in_c = cross_edge(p, c.to_vec2(), edge_from_c.to_vec2());
 
             if in_a == in_b && in_a == in_c {
-                pixel_renderer.set_pixel(x as u32, y as u32, color);
+                let p0 = Vec2::new(0.0, 0.0);
+                let (_uv, w) = interpolate_uv(Vec2::new(x as f32, y as f32), a, b, c, p0, p0, p0);
+                pixel_renderer.set_pixel_z(x as u32, y as u32, w, color);
             }
         }
     }
@@ -350,7 +337,7 @@ pub fn draw_triangle_texture(
     }
 }
 
-pub fn draw_line(pixel_renderer: &mut PixelRenderer, color: Color, a: Vec2, b: Vec2) {
+pub fn draw_line(pixel_renderer: &mut PixelRenderer, color: Color, a: Vec4, b: Vec4) {
     let mut x0: i32 = a.x.round() as i32;
     let mut y0: i32 = a.y.round() as i32;
     let x1: i32 = b.x.round() as i32;
