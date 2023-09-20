@@ -257,7 +257,7 @@ fn interpolate_uv(
     a_uv: Vec2,
     b_uv: Vec2,
     c_uv: Vec2,
-) -> Vec2 {
+) -> (Vec2, f32) {
     let a = a4.to_vec2();
     let b = b4.to_vec2();
     let c = c4.to_vec2();
@@ -293,9 +293,14 @@ fn interpolate_uv(
     // over the entire object. To increase the UV coordinate back to their correct values we divide by the small weights
     // and thus increase the UV coordinates.
 
-    ((a_uv * a_weight) + (b_uv * b_weight) + (c_uv * c_weight)) / (a_weight + b_weight + c_weight)
+    let uv = ((a_uv * a_weight) + (b_uv * b_weight) + (c_uv * c_weight))
+        / (a_weight + b_weight + c_weight);
+    let w =
+        ((a4 * a_weight) + (b4 * b_weight) + (c4 * c_weight)) / (a_weight + b_weight + c_weight);
+    (uv, w.w)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn draw_triangle_texture(
     pixel_renderer: &mut PixelRenderer,
     mesh: &Mesh,
@@ -325,15 +330,16 @@ pub fn draw_triangle_texture(
             let in_c = cross_edge(p, c.to_vec2(), edge_from_c.to_vec2());
 
             if in_a == in_b && in_a == in_c {
-                let uv = interpolate_uv(p, a, b, c, a_uv, b_uv, c_uv);
+                let (uv, w) = interpolate_uv(p, a, b, c, a_uv, b_uv, c_uv);
                 let u = (((mesh.texture.width() - 1) as f32 * uv.x).round() as u32)
                     .clamp(0, mesh.texture.width() - 1);
                 let v = (((mesh.texture.height() - 1) as f32 * (1.0 - uv.y)).round() as u32)
                     .clamp(0, mesh.texture.height() - 1);
                 let texture_color = mesh.texture.get_pixel(u, v);
-                pixel_renderer.set_pixel(
+                pixel_renderer.set_pixel_z(
                     x as u32,
                     y as u32,
+                    w,
                     color_mul(
                         Color::RGB(texture_color[0], texture_color[1], texture_color[2]),
                         light_intensity,

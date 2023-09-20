@@ -14,6 +14,7 @@ pub struct PixelRenderer {
     pub context: sdl2::Sdl,
     pub canvas: Canvas<Window>,
     pub color_buffer: Box<[u8]>,
+    pub z_buffer: Box<[f32]>,
     pub pixel_format: PixelFormat,
     // Unsafe: color_texture must be dropped before texture_creator.
     // We will handle this in the drop trait.
@@ -72,6 +73,7 @@ impl PixelRenderer {
     ) -> Self {
         let pixel_count: usize = (width * height) as usize;
         let color_buffer: Box<[u8]> = vec![0u8; pixel_count * SIZE_OF_COLOR].into_boxed_slice();
+        let z_buffer: Box<[f32]> = vec![f32::INFINITY; pixel_count].into_boxed_slice();
         // Unsafe: We will manage the life of texture_creator and color_texture ourselves.
         // We will keep them together in this struct and eventually drop them together.
         let texture_creator: *mut TextureCreator<WindowContext> =
@@ -90,6 +92,7 @@ impl PixelRenderer {
             context,
             canvas,
             color_buffer,
+            z_buffer,
             pixel_format,
             texture_creator,
             color_texture,
@@ -110,6 +113,28 @@ impl PixelRenderer {
         self.color_buffer[i..i + SIZE_OF_COLOR].copy_from_slice(color_bytes);
     }
 
+    pub fn set_pixel_z(&mut self, x: u32, y: u32, z: f32, color: Color) {
+        if x >= self.width || y >= self.height {
+            return;
+        }
+
+        let i = ((y * self.width) + x) as usize;
+
+        if z >= self.z_buffer[i] {
+            return;
+        } else {
+            self.z_buffer[i] = z;
+        }
+
+        let i_color = i * SIZE_OF_COLOR;
+
+        // Turn the color into bytes. The correct bytes for a color depend on
+        // the pixel format and the system endianness.
+        let color_bytes: &[u8; SIZE_OF_COLOR] = &color.to_u32(&self.pixel_format).to_ne_bytes();
+
+        self.color_buffer[i_color..i_color + SIZE_OF_COLOR].copy_from_slice(color_bytes);
+    }
+
     pub fn clear_pixels(&mut self, color: Color) {
         let color_bytes: &[u8; SIZE_OF_COLOR] = &color.to_u32(&self.pixel_format).to_ne_bytes();
 
@@ -118,9 +143,10 @@ impl PixelRenderer {
 
         for y in 0_usize..height {
             for x in 0_usize..width {
-                let i: usize = ((y * width) + x) * SIZE_OF_COLOR;
-                let i_end: usize = i + SIZE_OF_COLOR;
-                self.color_buffer[i..i_end].copy_from_slice(color_bytes);
+                let i: usize = (y * width) + x;
+                self.z_buffer[i] = f32::INFINITY;
+                let i_color: usize = i * SIZE_OF_COLOR;
+                self.color_buffer[i_color..i_color + SIZE_OF_COLOR].copy_from_slice(color_bytes);
             }
         }
     }
