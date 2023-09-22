@@ -10,8 +10,6 @@ use rand::{seq::SliceRandom, Rng};
 use sdl2::pixels::Color;
 use vec::{Vec2, Vec3, Vec4};
 
-const CAMERA_LOCATION: Vec3 = Vec3::new(0.0, 5.0, -5.0);
-const LOOK_AT: Vec3 = Vec3::new(0.0, 0.0, 0.0);
 const UP: Vec3 = Vec3::new(0.0, 1.0, 0.0);
 const LIGHT_DIRECTION: Vec3 = Vec3::new(-100.0, 100.0, -50.0);
 const ASPECT_RATIO: f32 = 9.0 / 21.0;
@@ -20,7 +18,13 @@ const Z_NEAR: f32 = 1.0;
 const Z_FAR: f32 = 10.0;
 const Z_RATIO: f32 = Z_FAR / (Z_FAR - Z_NEAR);
 
-pub fn project_point_to_screen_space(screen_width: u32, screen_height: u32, p: Vec3) -> Vec4 {
+pub fn project_point_to_screen_space(
+    screen_width: u32,
+    screen_height: u32,
+    p: Vec3,
+    camera_location: Vec3,
+    look_at: Vec3,
+) -> Vec4 {
     let projection_matrix = Mat4::new(
         // Row 1
         ASPECT_RATIO * F,
@@ -44,7 +48,7 @@ pub fn project_point_to_screen_space(screen_width: u32, screen_height: u32, p: V
         0.0,
     );
 
-    let p = projection_matrix * camera_view_matrix(CAMERA_LOCATION, LOOK_AT, UP) * p.to_vec4();
+    let p = projection_matrix * camera_view_matrix(camera_location, look_at, UP) * p.to_vec4();
 
     let half_width: f32 = screen_width as f32 / 2.0;
     let half_height: f32 = screen_height as f32 / 2.0;
@@ -104,6 +108,31 @@ pub struct DrawOptions {
     pub pause_rendering: bool,
 }
 
+pub struct World {
+    pub mesh: Mesh,
+    pub camera_location: Vec3,
+    pub camera_look_at: Vec3,
+    pub options: DrawOptions,
+}
+
+pub fn update_world(world: &mut World, delta_t: f32) {
+    let mut rng = rand::thread_rng();
+    if !world.options.pause_rendering && rng.gen::<f32>() < 0.03 {
+        world.mesh.rotation.x = world.mesh.rotation.x * 0.999 + rng.gen_range(-10.0..10.0);
+        world.mesh.rotation.y = world.mesh.rotation.y * 0.999 + rng.gen_range(-10.0..10.0);
+        world.mesh.rotation.z = world.mesh.rotation.z * 0.999 + rng.gen_range(-10.0..10.0);
+    }
+
+    if !world.options.pause_rendering {
+        for p in world.mesh.vertices.iter_mut() {
+            let rx = Mat4::rotate_x(world.mesh.rotation.x * delta_t);
+            let ry = Mat4::rotate_y(world.mesh.rotation.y * delta_t);
+            let rz = Mat4::rotate_z(world.mesh.rotation.z * delta_t);
+            *p = rx * ry * rz * (*p);
+        }
+    }
+}
+
 fn color_mul(color: Color, multiplier: f32) -> Color {
     let r = (color.r as f32 * multiplier).clamp(0.0, 255.0).round() as u8;
     let g = (color.g as f32 * multiplier).clamp(0.0, 255.0).round() as u8;
@@ -111,22 +140,10 @@ fn color_mul(color: Color, multiplier: f32) -> Color {
     Color::RGB(r, g, b)
 }
 
-pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions, mesh: &mut Mesh) {
+pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, world: &World) {
     let mut rng = rand::thread_rng();
-    if !draw_options.pause_rendering && rng.gen::<f32>() < 0.03 {
-        mesh.rotation.x = mesh.rotation.x * 0.9999 + rng.gen_range(-0.05..0.05);
-        mesh.rotation.y = mesh.rotation.y * 0.9999 + rng.gen_range(-0.05..0.05);
-        mesh.rotation.z = mesh.rotation.z * 0.9999 + rng.gen_range(-0.05..0.05);
-    }
-
-    if !draw_options.pause_rendering {
-        for p in mesh.vertices.iter_mut() {
-            let rx = Mat4::rotate_x(mesh.rotation.x);
-            let ry = Mat4::rotate_y(mesh.rotation.y);
-            let rz = Mat4::rotate_z(mesh.rotation.z);
-            *p = rx * ry * rz * (*p);
-        }
-    }
+    let mesh: &Mesh = &world.mesh;
+    let draw_options = &world.options;
 
     pixel_renderer.clear_pixels(Color::RGB(0, 0, 0));
 
@@ -137,7 +154,7 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions,
 
         let face_normal = (vert_b - vert_a).cross(vert_c - vert_a).unit_norm();
         if draw_options.backface_culling {
-            let vec_to_camera = CAMERA_LOCATION - vert_a;
+            let vec_to_camera = world.camera_location - vert_a;
             if face_normal.dot(vec_to_camera) <= 0.0 {
                 continue;
             }
@@ -153,9 +170,27 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions,
             * (intensity_max - intensity_min)
             + intensity_min;
 
-        let pa = project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_a);
-        let pb = project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_b);
-        let pc = project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_c);
+        let pa = project_point_to_screen_space(
+            pixel_renderer.width,
+            pixel_renderer.height,
+            vert_a,
+            world.camera_location,
+            world.camera_look_at,
+        );
+        let pb = project_point_to_screen_space(
+            pixel_renderer.width,
+            pixel_renderer.height,
+            vert_b,
+            world.camera_location,
+            world.camera_look_at,
+        );
+        let pc = project_point_to_screen_space(
+            pixel_renderer.width,
+            pixel_renderer.height,
+            vert_c,
+            world.camera_location,
+            world.camera_look_at,
+        );
 
         if draw_options.triangle_fill == TriangleFill::Color {
             draw_triangle_color(
