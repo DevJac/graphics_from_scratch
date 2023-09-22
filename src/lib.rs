@@ -10,8 +10,10 @@ use rand::{seq::SliceRandom, Rng};
 use sdl2::pixels::Color;
 use vec::{Vec2, Vec3, Vec4};
 
-const CAMERA_LOCATION: Vec3 = Vec3::new(0.0, 0.0, -5.0);
-const LIGHT_DIRECTION: Vec3 = Vec3::new(-100.0, -100.0, -50.0);
+const CAMERA_LOCATION: Vec3 = Vec3::new(0.0, 5.0, -5.0);
+const LOOK_AT: Vec3 = Vec3::new(0.0, 0.0, 0.0);
+const UP: Vec3 = Vec3::new(0.0, 1.0, 0.0);
+const LIGHT_DIRECTION: Vec3 = Vec3::new(-100.0, 100.0, -50.0);
 const ASPECT_RATIO: f32 = 9.0 / 21.0;
 const F: f32 = 1.732_051; // (1 / (tan(FOV / 2))); FOV = 60 degrees
 const Z_NEAR: f32 = 1.0;
@@ -42,13 +44,50 @@ pub fn project_point_to_screen_space(screen_width: u32, screen_height: u32, p: V
         0.0,
     );
 
-    let p = projection_matrix * ((p - CAMERA_LOCATION).to_vec4());
+    let p = projection_matrix * camera_view_matrix(CAMERA_LOCATION, LOOK_AT, UP) * p.to_vec4();
 
     let half_width: f32 = screen_width as f32 / 2.0;
     let half_height: f32 = screen_height as f32 / 2.0;
     let centered_x = (p.x / p.w) * half_width + half_width;
     let centered_y = (p.y / p.w) * half_height + half_height;
     Vec4::new(centered_x, centered_y, p.z, p.w)
+}
+
+pub fn camera_view_matrix(camera_location: Vec3, look_at: Vec3, up: Vec3) -> Mat4 {
+    // Conceptually, we will create a set of orthonormal basis vectors and the Z basis vector will point
+    // towards look_at. Once we have the matrix to transform the standard basis vectors we will find the
+    // inverse (by simply transposing, since it's orthonormal) and apply the inverse to the world.
+    // Applying the inverse to the world will transform the world and place look_at along the standard z axis.
+    // (We will not store the intermediate matrix, we will calculate and return the inverse matrix directly.)
+
+    // The axes that are aligned with look_at, we will call "aligned".
+    let aligned_z_axis = (look_at - camera_location).unit_norm();
+    let aligned_x_axis = up.cross(aligned_z_axis).unit_norm();
+    // When cross arguments are already normal, the result will be normal.
+    let aligned_y_axis = aligned_z_axis.cross(aligned_x_axis);
+
+    Mat4::new(
+        // Row 1
+        aligned_x_axis.x,
+        aligned_x_axis.y,
+        aligned_x_axis.z,
+        -aligned_x_axis.dot(camera_location),
+        // Row 2
+        aligned_y_axis.x,
+        aligned_y_axis.y,
+        aligned_y_axis.z,
+        -aligned_y_axis.dot(camera_location),
+        // Row 3
+        aligned_z_axis.x,
+        aligned_z_axis.y,
+        aligned_z_axis.z,
+        -aligned_z_axis.dot(camera_location),
+        // Row 4
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+    )
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -96,7 +135,7 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions,
         let vert_b = mesh.vertices[face.b];
         let vert_c = mesh.vertices[face.c];
 
-        let face_normal = (vert_b - vert_a).cross(vert_c - vert_a);
+        let face_normal = (vert_b - vert_a).cross(vert_c - vert_a).unit_norm();
         if draw_options.backface_culling {
             let vec_to_camera = CAMERA_LOCATION - vert_a;
             if face_normal.dot(vec_to_camera) <= 0.0 {
@@ -108,8 +147,8 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, draw_options: &DrawOptions,
         let uv_b = mesh.uvs[face.b_uv];
         let uv_c = mesh.uvs[face.c_uv];
 
-        let is_facing_light = face_normal.unit_norm().dot(LIGHT_DIRECTION.unit_norm());
-        let (intensity_min, intensity_max) = (0.2, 1.2);
+        let is_facing_light = face_normal.dot(LIGHT_DIRECTION.unit_norm());
+        let (intensity_min, intensity_max) = (0.4, 1.2);
         let light_intensity = ((is_facing_light + 1.0) / (1.0 + 1.0))
             * (intensity_max - intensity_min)
             + intensity_min;
