@@ -86,6 +86,8 @@ impl PixelRenderer {
                 .create_texture(pixel_format_enum, TextureAccess::Streaming, width, height)
                 .unwrap(),
         ));
+        let mouse = context.mouse();
+        mouse.set_relative_mouse_mode(true);
         Self {
             width,
             height,

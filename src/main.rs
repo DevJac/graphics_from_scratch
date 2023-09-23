@@ -1,7 +1,9 @@
 use graphics_from_scratch::mesh::Mesh;
 use graphics_from_scratch::pixel_renderer::PixelRenderer;
 use graphics_from_scratch::vec::Vec3;
-use graphics_from_scratch::{draw_mesh, update_world, DrawOptions, TriangleFill, World};
+use graphics_from_scratch::{
+    draw_mesh, update_world, update_world_motion, DrawOptions, TriangleFill, World,
+};
 
 fn main() {
     let width = 860;
@@ -56,6 +58,9 @@ fn main() {
                     ..
                 } => {
                     draw_options.pause_rendering = !draw_options.pause_rendering;
+                }
+                sdl2::event::Event::MouseMotion { xrel, yrel, .. } => {
+                    update_world_motion(&mut world, (xrel, yrel));
                 }
                 _ => {}
             }

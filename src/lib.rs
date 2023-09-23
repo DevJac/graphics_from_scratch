@@ -115,6 +115,14 @@ pub struct World {
     pub options: DrawOptions,
 }
 
+pub fn update_world_motion(world: &mut World, motion: (i32, i32)) {
+    let rot_x = Mat4::rotate_y(motion.0 as f32 * 0.01);
+    let rot_y = Mat4::rotate_x(motion.1 as f32 * 0.01);
+    let cam_to_look = world.camera_look_at - world.camera_location;
+    let rotated = rot_x * rot_y * cam_to_look;
+    world.camera_look_at = world.camera_location + rotated;
+}
+
 pub fn update_world(world: &mut World, delta_t: f32) {
     let mut rng = rand::thread_rng();
     if !world.options.pause_rendering && rng.gen::<f32>() < 0.03 {
