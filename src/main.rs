@@ -2,7 +2,8 @@ use graphics_from_scratch::mesh::Mesh;
 use graphics_from_scratch::pixel_renderer::PixelRenderer;
 use graphics_from_scratch::vec::Vec3;
 use graphics_from_scratch::{
-    draw_mesh, update_world, update_world_motion, DrawOptions, TriangleFill, World,
+    draw_mesh, update_world, update_world_approach, update_world_rotate, DrawOptions, TriangleFill,
+    World,
 };
 
 fn main() {
@@ -59,8 +60,22 @@ fn main() {
                 } => {
                     draw_options.pause_rendering = !draw_options.pause_rendering;
                 }
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(sdl2::keyboard::Keycode::W),
+                    ..
+                } => {
+                    let delta_t = (std::time::Instant::now() - prior_instant).as_secs_f32();
+                    update_world_approach(&mut world, 1.0, delta_t);
+                }
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(sdl2::keyboard::Keycode::S),
+                    ..
+                } => {
+                    let delta_t = (std::time::Instant::now() - prior_instant).as_secs_f32();
+                    update_world_approach(&mut world, -1.0, delta_t);
+                }
                 sdl2::event::Event::MouseMotion { xrel, yrel, .. } => {
-                    update_world_motion(&mut world, (xrel, yrel));
+                    update_world_rotate(&mut world, (xrel, yrel));
                 }
                 _ => {}
             }

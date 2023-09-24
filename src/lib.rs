@@ -115,9 +115,16 @@ pub struct World {
     pub options: DrawOptions,
 }
 
-pub fn update_world_motion(world: &mut World, motion: (i32, i32)) {
-    let rot_x = Mat4::rotate_y(motion.0 as f32 * 0.01);
-    let rot_y = Mat4::rotate_x(motion.1 as f32 * 0.01);
+pub fn update_world_approach(world: &mut World, approach: f32, delta_t: f32) {
+    let toward_look_at = (world.camera_look_at - world.camera_location).unit_norm();
+    let move_vec = toward_look_at * approach * 10.0 * delta_t;
+    world.camera_location += move_vec;
+    world.camera_look_at += move_vec;
+}
+
+pub fn update_world_rotate(world: &mut World, motion: (i32, i32)) {
+    let rot_x = Mat4::rotate_y(motion.0 as f32 * 0.03);
+    let rot_y = Mat4::rotate_x(motion.1 as f32 * 0.03);
     let cam_to_look = world.camera_look_at - world.camera_location;
     let rotated = rot_x * rot_y * cam_to_look;
     world.camera_look_at = world.camera_location + rotated;
