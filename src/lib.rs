@@ -18,13 +18,11 @@ const Z_NEAR: f32 = 1.0;
 const Z_FAR: f32 = 10.0;
 const Z_RATIO: f32 = Z_FAR / (Z_FAR - Z_NEAR);
 
-pub fn project_point_to_screen_space(
-    screen_width: u32,
-    screen_height: u32,
-    p: Vec3,
-    camera_location: Vec3,
-    look_at: Vec3,
-) -> Vec4 {
+pub fn project_point_to_camera_space(p: Vec3, camera_location: Vec3, look_at: Vec3) -> Vec3 {
+    camera_view_matrix(camera_location, look_at, UP) * p
+}
+
+pub fn project_point_to_screen_space(screen_width: u32, screen_height: u32, p: Vec3) -> Vec4 {
     let projection_matrix = Mat4::new(
         // Row 1
         ASPECT_RATIO * F,
@@ -48,7 +46,7 @@ pub fn project_point_to_screen_space(
         0.0,
     );
 
-    let p = projection_matrix * camera_view_matrix(camera_location, look_at, UP) * p.to_vec4();
+    let p = projection_matrix * p.to_vec4();
 
     let half_width: f32 = screen_width as f32 / 2.0;
     let half_height: f32 = screen_height as f32 / 2.0;
@@ -217,9 +215,30 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, world: &World) {
 
         let polygons = frustum_clip(
             vec![
-                ClipVert::new(vert_a, uv_a),
-                ClipVert::new(vert_b, uv_b),
-                ClipVert::new(vert_c, uv_c),
+                ClipVert::new(
+                    project_point_to_camera_space(
+                        vert_a,
+                        world.camera_location,
+                        world.camera_look_at,
+                    ),
+                    uv_a,
+                ),
+                ClipVert::new(
+                    project_point_to_camera_space(
+                        vert_b,
+                        world.camera_location,
+                        world.camera_look_at,
+                    ),
+                    uv_b,
+                ),
+                ClipVert::new(
+                    project_point_to_camera_space(
+                        vert_c,
+                        world.camera_location,
+                        world.camera_look_at,
+                    ),
+                    uv_c,
+                ),
             ],
             &clip_planes,
         );
@@ -245,27 +264,12 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, world: &World) {
                 * (intensity_max - intensity_min)
                 + intensity_min;
 
-            let pa = project_point_to_screen_space(
-                pixel_renderer.width,
-                pixel_renderer.height,
-                vert_a,
-                world.camera_location,
-                world.camera_look_at,
-            );
-            let pb = project_point_to_screen_space(
-                pixel_renderer.width,
-                pixel_renderer.height,
-                vert_b,
-                world.camera_location,
-                world.camera_look_at,
-            );
-            let pc = project_point_to_screen_space(
-                pixel_renderer.width,
-                pixel_renderer.height,
-                vert_c,
-                world.camera_location,
-                world.camera_look_at,
-            );
+            let pa =
+                project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_a);
+            let pb =
+                project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_b);
+            let pc =
+                project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_c);
 
             if draw_options.triangle_fill == TriangleFill::Color {
                 draw_triangle_color(
