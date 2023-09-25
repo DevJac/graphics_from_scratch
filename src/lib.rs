@@ -155,6 +155,40 @@ fn color_mul(color: Color, multiplier: f32) -> Color {
     Color::RGB(r, g, b)
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+struct ClipPlane {
+    vert: Vec3,
+    norm: Vec3,
+}
+
+impl ClipPlane {
+    fn new(vert: Vec3, norm: Vec3) -> Self {
+        ClipPlane { vert, norm }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+struct ClipVert {
+    vert: Vec3,
+    uv: Vec2,
+}
+
+impl ClipVert {
+    fn new(vert: Vec3, uv: Vec2) -> Self {
+        ClipVert { vert, uv }
+    }
+}
+
+fn frustum_planes() -> Vec<ClipPlane> {
+    // TODO: calculate and return clip planes
+    vec![]
+}
+
+fn frustum_clip(poly: Vec<ClipVert>, clip_planes: &[ClipPlane]) -> Vec<ClipVert> {
+    // TODO: clip
+    poly
+}
+
 pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, world: &World) {
     let mut rng = rand::thread_rng();
     let mesh: &Mesh = &world.mesh;
@@ -162,7 +196,9 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, world: &World) {
 
     pixel_renderer.clear_pixels(Color::RGB(0, 0, 0));
 
-    for face in mesh.faces.choose_multiple(&mut rng, mesh.faces.len()) {
+    let clip_planes = frustum_planes();
+
+    'faces: for face in mesh.faces.choose_multiple(&mut rng, mesh.faces.len()) {
         let vert_a = mesh.vertices[face.a];
         let vert_b = mesh.vertices[face.b];
         let vert_c = mesh.vertices[face.c];
@@ -171,7 +207,7 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, world: &World) {
         if draw_options.backface_culling {
             let vec_to_camera = world.camera_location - vert_a;
             if face_normal.dot(vec_to_camera) <= 0.0 {
-                continue;
+                continue 'faces;
             }
         }
 
@@ -179,78 +215,103 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, world: &World) {
         let uv_b = mesh.uvs[face.b_uv];
         let uv_c = mesh.uvs[face.c_uv];
 
-        let is_facing_light = face_normal.dot(LIGHT_DIRECTION.unit_norm());
-        let (intensity_min, intensity_max) = (0.4, 1.2);
-        let light_intensity = ((is_facing_light + 1.0) / (1.0 + 1.0))
-            * (intensity_max - intensity_min)
-            + intensity_min;
-
-        let pa = project_point_to_screen_space(
-            pixel_renderer.width,
-            pixel_renderer.height,
-            vert_a,
-            world.camera_location,
-            world.camera_look_at,
-        );
-        let pb = project_point_to_screen_space(
-            pixel_renderer.width,
-            pixel_renderer.height,
-            vert_b,
-            world.camera_location,
-            world.camera_look_at,
-        );
-        let pc = project_point_to_screen_space(
-            pixel_renderer.width,
-            pixel_renderer.height,
-            vert_c,
-            world.camera_location,
-            world.camera_look_at,
+        let polygons = frustum_clip(
+            vec![
+                ClipVert::new(vert_a, uv_a),
+                ClipVert::new(vert_b, uv_b),
+                ClipVert::new(vert_c, uv_c),
+            ],
+            &clip_planes,
         );
 
-        if draw_options.triangle_fill == TriangleFill::Color {
-            draw_triangle_color(
-                pixel_renderer,
-                color_mul(face.color, light_intensity),
-                pa,
-                pb,
-                pc,
-            );
-        } else if draw_options.triangle_fill == TriangleFill::Texture {
-            draw_triangle_texture(
-                pixel_renderer,
-                mesh,
-                light_intensity,
-                pa,
-                pb,
-                pc,
-                uv_a,
-                uv_b,
-                uv_c,
-            );
+        if polygons.is_empty() {
+            continue 'faces;
         }
 
-        if draw_options.draw_wireframe {
-            draw_line(pixel_renderer, Color::RGB(255, 255, 255), pa, pb);
-            draw_line(pixel_renderer, Color::RGB(255, 255, 255), pb, pc);
-            draw_line(pixel_renderer, Color::RGB(255, 255, 255), pc, pa);
-        }
+        assert!(polygons.len() >= 3);
 
-        if draw_options.triangle_fill == TriangleFill::None && !draw_options.draw_wireframe {
-            pixel_renderer.set_pixel(
-                pa.x.round() as u32,
-                pa.y.round() as u32,
-                Color::RGB(255, 255, 255),
+        for i in 1..(polygons.len() - 1) {
+            let vert_a = polygons[0].vert;
+            let vert_b = polygons[i].vert;
+            let vert_c = polygons[i + 1].vert;
+
+            let uv_a = polygons[0].uv;
+            let uv_b = polygons[i].uv;
+            let uv_c = polygons[i + 1].uv;
+
+            let is_facing_light = face_normal.dot(LIGHT_DIRECTION.unit_norm());
+            let (intensity_min, intensity_max) = (0.4, 1.2);
+            let light_intensity = ((is_facing_light + 1.0) / (1.0 + 1.0))
+                * (intensity_max - intensity_min)
+                + intensity_min;
+
+            let pa = project_point_to_screen_space(
+                pixel_renderer.width,
+                pixel_renderer.height,
+                vert_a,
+                world.camera_location,
+                world.camera_look_at,
             );
-            pixel_renderer.set_pixel(
-                pb.x.round() as u32,
-                pb.y.round() as u32,
-                Color::RGB(255, 255, 255),
+            let pb = project_point_to_screen_space(
+                pixel_renderer.width,
+                pixel_renderer.height,
+                vert_b,
+                world.camera_location,
+                world.camera_look_at,
             );
-            pixel_renderer.set_pixel(
-                pc.x.round() as u32,
-                pc.y.round() as u32,
-                Color::RGB(255, 255, 255),
+            let pc = project_point_to_screen_space(
+                pixel_renderer.width,
+                pixel_renderer.height,
+                vert_c,
+                world.camera_location,
+                world.camera_look_at,
             );
+
+            if draw_options.triangle_fill == TriangleFill::Color {
+                draw_triangle_color(
+                    pixel_renderer,
+                    color_mul(face.color, light_intensity),
+                    pa,
+                    pb,
+                    pc,
+                );
+            } else if draw_options.triangle_fill == TriangleFill::Texture {
+                draw_triangle_texture(
+                    pixel_renderer,
+                    mesh,
+                    light_intensity,
+                    pa,
+                    pb,
+                    pc,
+                    uv_a,
+                    uv_b,
+                    uv_c,
+                );
+            }
+
+            if draw_options.draw_wireframe {
+                draw_line(pixel_renderer, Color::RGB(255, 255, 255), pa, pb);
+                draw_line(pixel_renderer, Color::RGB(255, 255, 255), pb, pc);
+                draw_line(pixel_renderer, Color::RGB(255, 255, 255), pc, pa);
+            }
+
+            if draw_options.triangle_fill == TriangleFill::None && !draw_options.draw_wireframe {
+                pixel_renderer.set_pixel(
+                    pa.x.round() as u32,
+                    pa.y.round() as u32,
+                    Color::RGB(255, 255, 255),
+                );
+                pixel_renderer.set_pixel(
+                    pb.x.round() as u32,
+                    pb.y.round() as u32,
+                    Color::RGB(255, 255, 255),
+                );
+                pixel_renderer.set_pixel(
+                    pc.x.round() as u32,
+                    pc.y.round() as u32,
+                    Color::RGB(255, 255, 255),
+                );
+            }
         }
 
         pixel_renderer.set_pixel(0, 0, Color::RGB(255, 255, 255));
