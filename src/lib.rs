@@ -189,12 +189,12 @@ fn frustum_planes() -> Vec<ClipPlane> {
         ClipPlane {
             name: "left",
             point: Vec3::new(0.0, 0.0, 0.0),
-            norm: Mat4::rotate_y(-FOV / 2.0) * Vec3::new(1.0, 0.0, 0.0),
+            norm: Mat4::rotate_y(-FOV / 1.2) * Vec3::new(1.0, 0.0, 0.0),
         },
         ClipPlane {
             name: "right",
             point: Vec3::new(0.0, 0.0, 0.0),
-            norm: Mat4::rotate_y(FOV / 2.0) * Vec3::new(-1.0, 0.0, 0.0),
+            norm: Mat4::rotate_y(FOV / 1.2) * Vec3::new(-1.0, 0.0, 0.0),
         },
         ClipPlane {
             name: "top",
@@ -209,18 +209,58 @@ fn frustum_planes() -> Vec<ClipPlane> {
     ]
 }
 
-fn frustum_clip(poly: &mut [ClipVert], clip_planes: &[ClipPlane]) {
-    for clip_plane in clip_planes {
-        for clip_vert in poly.iter() {
-            assert!(
-                (clip_vert.vert - clip_plane.point).dot(clip_plane.norm) > 0.0,
-                "vert ({:?}) outside {} plane ({:?}, {:?})",
-                &clip_vert.vert,
-                &clip_plane.name,
-                &clip_plane.point,
-                &clip_plane.norm
-            );
+fn in_plane(vert: Vec3, plane: &ClipPlane) -> f32 {
+    ((vert - plane.point).dot(plane.norm) + 0.000_1).signum()
+}
+
+fn intersection(v0: ClipVert, v1: ClipVert, plane: &ClipPlane) -> ClipVert {
+    // See: https://import.cdn.thinkific.com/167815/JoyKennethClipping-200905-175314.pdf
+    let d0 = (v0.vert - plane.point).dot(plane.norm);
+    let d1 = (v1.vert - plane.point).dot(plane.norm);
+    let t = d0 / (d0 - d1);
+    let intersect = v0.vert + ((v1.vert - v0.vert) * t);
+
+    let line_segment_len = (v1.vert - v0.vert).len();
+    let v0_dist_from_intersect = (v0.vert - intersect).len();
+    let v1_dist_from_intersect = (v1.vert - intersect).len();
+    let v0_weight = v1_dist_from_intersect / line_segment_len;
+    let v1_weight = v0_dist_from_intersect / line_segment_len;
+    assert!((0.99..1.01).contains(&(v0_weight + v1_weight)));
+    let intersect_uv = v0.uv * v0_weight + v1.uv * v1_weight;
+
+    ClipVert {
+        vert: intersect,
+        uv: intersect_uv,
+    }
+}
+
+fn frustum_clip(poly: &mut Vec<ClipVert>, clip_planes: &[ClipPlane]) {
+    for plane in clip_planes {
+        let mut i: usize = 0;
+        loop {
+            if i >= poly.len() {
+                break;
+            }
+
+            let v0 = poly[i];
+            let v1 = if i + 1 < poly.len() {
+                poly[i + 1]
+            } else {
+                poly[0]
+            };
+
+            if in_plane(v0.vert, plane) == in_plane(v1.vert, plane) {
+                i += 1;
+                continue;
+            } else {
+                let intersect = intersection(v0, v1, plane);
+                poly.insert(i + 1, intersect);
+                i += 1;
+            }
+
+            i += 1;
         }
+        poly.retain(|v| in_plane(v.vert, plane) >= 0.0);
     }
 }
 
