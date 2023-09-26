@@ -13,7 +13,7 @@ use vec::{Vec2, Vec3, Vec4};
 const UP: Vec3 = Vec3::new(0.0, 1.0, 0.0);
 const LIGHT_DIRECTION: Vec3 = Vec3::new(-100.0, 100.0, -50.0);
 const ASPECT_RATIO: f32 = 9.0 / 21.0;
-const F: f32 = 1.732_051; // (1 / (tan(FOV / 2))); FOV = 60 degrees
+const FOV: f32 = 60.0; // 60 degrees
 const Z_NEAR: f32 = 1.0;
 const Z_FAR: f32 = 10.0;
 const Z_RATIO: f32 = Z_FAR / (Z_FAR - Z_NEAR);
@@ -23,15 +23,17 @@ pub fn project_point_to_camera_space(p: Vec3, camera_location: Vec3, look_at: Ve
 }
 
 pub fn project_point_to_screen_space(screen_width: u32, screen_height: u32, p: Vec3) -> Vec4 {
+    //  f: f32 = 1.732_051;  (1 / (tan(FOV / 2)))
+    let f: f32 = 1.0 / ((FOV.to_radians() / 2.0).tan());
     let projection_matrix = Mat4::new(
         // Row 1
-        ASPECT_RATIO * F,
+        ASPECT_RATIO * f,
         0.0,
         0.0,
         0.0,
         // Row 2
         0.0,
-        -F,
+        -f,
         0.0,
         0.0,
         // Row 3
@@ -155,14 +157,9 @@ fn color_mul(color: Color, multiplier: f32) -> Color {
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 struct ClipPlane {
-    vert: Vec3,
+    name: &'static str,
+    point: Vec3,
     norm: Vec3,
-}
-
-impl ClipPlane {
-    fn new(vert: Vec3, norm: Vec3) -> Self {
-        ClipPlane { vert, norm }
-    }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -178,13 +175,53 @@ impl ClipVert {
 }
 
 fn frustum_planes() -> Vec<ClipPlane> {
-    // TODO: calculate and return clip planes
-    vec![]
+    vec![
+        ClipPlane {
+            name: "near",
+            point: Vec3::new(0.0, 0.0, Z_NEAR),
+            norm: Vec3::new(0.0, 0.0, 1.0),
+        },
+        ClipPlane {
+            name: "far",
+            point: Vec3::new(0.0, 0.0, Z_FAR),
+            norm: Vec3::new(0.0, 0.0, -1.0),
+        },
+        ClipPlane {
+            name: "left",
+            point: Vec3::new(0.0, 0.0, 0.0),
+            norm: Mat4::rotate_y(-FOV / 2.0) * Vec3::new(1.0, 0.0, 0.0),
+        },
+        ClipPlane {
+            name: "right",
+            point: Vec3::new(0.0, 0.0, 0.0),
+            norm: Mat4::rotate_y(FOV / 2.0) * Vec3::new(-1.0, 0.0, 0.0),
+        },
+        ClipPlane {
+            name: "top",
+            point: Vec3::new(0.0, 0.0, 0.0),
+            norm: Mat4::rotate_x(-FOV / 2.0) * Vec3::new(0.0, -1.0, 0.0),
+        },
+        ClipPlane {
+            name: "bottom",
+            point: Vec3::new(0.0, 0.0, 0.0),
+            norm: Mat4::rotate_x(FOV / 2.0) * Vec3::new(0.0, 1.0, 0.0),
+        },
+    ]
 }
 
-fn frustum_clip(poly: Vec<ClipVert>, clip_planes: &[ClipPlane]) -> Vec<ClipVert> {
-    // TODO: clip
-    poly
+fn frustum_clip(poly: &mut [ClipVert], clip_planes: &[ClipPlane]) {
+    for clip_plane in clip_planes {
+        for clip_vert in poly.iter() {
+            assert!(
+                (clip_vert.vert - clip_plane.point).dot(clip_plane.norm) > 0.0,
+                "vert ({:?}) outside {} plane ({:?}, {:?})",
+                &clip_vert.vert,
+                &clip_plane.name,
+                &clip_plane.point,
+                &clip_plane.norm
+            );
+        }
+    }
 }
 
 pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, world: &World) {
@@ -213,35 +250,21 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, world: &World) {
         let uv_b = mesh.uvs[face.b_uv];
         let uv_c = mesh.uvs[face.c_uv];
 
-        let polygons = frustum_clip(
-            vec![
-                ClipVert::new(
-                    project_point_to_camera_space(
-                        vert_a,
-                        world.camera_location,
-                        world.camera_look_at,
-                    ),
-                    uv_a,
-                ),
-                ClipVert::new(
-                    project_point_to_camera_space(
-                        vert_b,
-                        world.camera_location,
-                        world.camera_look_at,
-                    ),
-                    uv_b,
-                ),
-                ClipVert::new(
-                    project_point_to_camera_space(
-                        vert_c,
-                        world.camera_location,
-                        world.camera_look_at,
-                    ),
-                    uv_c,
-                ),
-            ],
-            &clip_planes,
-        );
+        let mut polygons = Vec::with_capacity(10);
+        polygons.push(ClipVert::new(
+            project_point_to_camera_space(vert_a, world.camera_location, world.camera_look_at),
+            uv_a,
+        ));
+        polygons.push(ClipVert::new(
+            project_point_to_camera_space(vert_b, world.camera_location, world.camera_look_at),
+            uv_b,
+        ));
+        polygons.push(ClipVert::new(
+            project_point_to_camera_space(vert_c, world.camera_location, world.camera_look_at),
+            uv_c,
+        ));
+
+        frustum_clip(&mut polygons, &clip_planes);
 
         if polygons.is_empty() {
             continue 'faces;
