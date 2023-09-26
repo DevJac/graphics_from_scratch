@@ -99,6 +99,16 @@ impl Mat4 {
 	)
     }
 
+    #[rustfmt::skip]
+    pub fn transpose(&self) -> Mat4 {
+        Mat4::new(
+            self.get(0, 0), self.get(1, 0), self.get(2, 0), self.get(3, 0), // End Row 1
+            self.get(0, 1), self.get(1, 1), self.get(2, 1), self.get(3, 1), // End Row 2
+            self.get(0, 2), self.get(1, 2), self.get(2, 2), self.get(3, 2), // End Row 3
+            self.get(0, 3), self.get(1, 3), self.get(2, 3), self.get(3, 3), // End Row 4
+        )
+    }
+
     pub fn get(&self, row: usize, column: usize) -> f32 {
         if row >= 4 || column >= 4 {
             panic!("Element {} {} is out of range for Mat4", row, column);
@@ -383,4 +393,15 @@ fn test_mat4_vec3_mul() {
     );
     let b = Vec3::new(1.0, 0.0, 3.0);
     assert_eq!(a * b, Vec3::new(3.0, 3.0, 6.0));
+}
+
+#[test]
+fn test_mat4_transpose() {
+    let a = Mat4::new(
+        1.0, 0.0, 0.0, 2.0, 0.0, 1.0, 0.0, 3.0, 0.0, 0.0, 1.0, 3.0, 0.0, 0.0, 0.0, 1.0,
+    );
+    let b = Mat4::new(
+        1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 2.0, 3.0, 3.0, 1.0,
+    );
+    assert_eq!(a.transpose(), b);
 }
