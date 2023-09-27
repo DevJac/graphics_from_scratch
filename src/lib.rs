@@ -202,6 +202,20 @@ impl ClipVert {
 }
 
 fn frustum_planes() -> Vec<ClipPlane> {
+    // We can't simply multiply angles by the aspect ratio.
+    // We need to convert to triangle ratios and scale one side the the triangle. Time for trig.
+    // The math:
+    // tan(FOV / 2) = h / d; where h is the screen height and d is the camera distance from the screen (d will not matter much)
+    // tan(?) = w / d; we want to find ?
+    // a = h / w
+    // w = h / a
+    // (h / d) / a = w / d
+    // atan(w / d) = ?; this is what we want
+    let vertical_fov_in_degrees = FOV;
+    let horizontal_fov_in_degrees = ((vertical_fov_in_degrees / 2.0).to_radians().tan()
+        / ASPECT_RATIO)
+        .atan()
+        .to_degrees();
     vec![
         ClipPlane {
             name: "near",
@@ -216,12 +230,12 @@ fn frustum_planes() -> Vec<ClipPlane> {
         ClipPlane {
             name: "left",
             point: Vec3::new(0.0, 0.0, 0.0),
-            norm: Mat4::rotate_y(-FOV / 1.2) * Vec3::new(1.0, 0.0, 0.0),
+            norm: Mat4::rotate_y(-horizontal_fov_in_degrees) * Vec3::new(1.0, 0.0, 0.0),
         },
         ClipPlane {
             name: "right",
             point: Vec3::new(0.0, 0.0, 0.0),
-            norm: Mat4::rotate_y(FOV / 1.2) * Vec3::new(-1.0, 0.0, 0.0),
+            norm: Mat4::rotate_y(horizontal_fov_in_degrees) * Vec3::new(-1.0, 0.0, 0.0),
         },
         ClipPlane {
             name: "top",
