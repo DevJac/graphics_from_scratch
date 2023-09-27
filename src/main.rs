@@ -5,6 +5,7 @@ use graphics_from_scratch::{
     draw_mesh, update_world, update_world_approach, update_world_rotate, DrawOptions, TriangleFill,
     World,
 };
+use sdl2::keyboard::{KeyboardState, Scancode};
 
 fn main() {
     let width = 860;
@@ -60,20 +61,6 @@ fn main() {
                 } => {
                     draw_options.pause_rendering = !draw_options.pause_rendering;
                 }
-                sdl2::event::Event::KeyDown {
-                    keycode: Some(sdl2::keyboard::Keycode::W),
-                    ..
-                } => {
-                    let delta_t = (std::time::Instant::now() - prior_instant).as_secs_f32();
-                    update_world_approach(&mut world, 1.0, delta_t);
-                }
-                sdl2::event::Event::KeyDown {
-                    keycode: Some(sdl2::keyboard::Keycode::S),
-                    ..
-                } => {
-                    let delta_t = (std::time::Instant::now() - prior_instant).as_secs_f32();
-                    update_world_approach(&mut world, -1.0, delta_t);
-                }
                 sdl2::event::Event::MouseMotion { xrel, yrel, .. } => {
                     update_world_rotate(&mut world, (xrel, yrel));
                 }
@@ -81,7 +68,24 @@ fn main() {
             }
         }
 
+        let mut motion_vec = (0.0, 0.0);
+        let event_pump = pixel_renderer.context.event_pump().unwrap();
+        let keyboard_state = KeyboardState::new(&event_pump);
+        if keyboard_state.is_scancode_pressed(Scancode::W) {
+            motion_vec.0 += 1.0;
+        }
+        if keyboard_state.is_scancode_pressed(Scancode::A) {
+            motion_vec.1 += -1.0;
+        }
+        if keyboard_state.is_scancode_pressed(Scancode::S) {
+            motion_vec.0 += -1.0;
+        }
+        if keyboard_state.is_scancode_pressed(Scancode::D) {
+            motion_vec.1 += 1.0;
+        }
+
         let delta_t = (std::time::Instant::now() - prior_instant).as_secs_f32();
+        update_world_approach(&mut world, motion_vec.0, motion_vec.1, delta_t);
         update_world(&mut world, delta_t);
         prior_instant = std::time::Instant::now();
         draw_mesh(&mut pixel_renderer, &world);

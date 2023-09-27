@@ -115,11 +115,16 @@ pub struct World {
     pub options: DrawOptions,
 }
 
-pub fn update_world_approach(world: &mut World, approach: f32, delta_t: f32) {
+pub fn update_world_approach(world: &mut World, approach: f32, strafe: f32, delta_t: f32) {
     let toward_look_at = (world.camera_look_at - world.camera_location).unit_norm();
-    let move_vec = toward_look_at * approach * 10.0 * delta_t;
-    world.camera_location += move_vec;
-    world.camera_look_at += move_vec;
+    let approach_vec = toward_look_at * approach * 10.0 * delta_t;
+    world.camera_location += approach_vec;
+    world.camera_look_at += approach_vec;
+
+    let camera_right = UP.cross(toward_look_at).unit_norm();
+    let strafe_vec = camera_right * strafe * 10.0 * delta_t;
+    world.camera_location += strafe_vec;
+    world.camera_look_at += strafe_vec;
 }
 
 fn new_basis_matrices(up: Vec3, rot: Vec3) -> (Mat4, Mat4) {
