@@ -117,12 +117,12 @@ pub struct World {
 
 pub fn update_world_approach(world: &mut World, approach: f32, strafe: f32, delta_t: f32) {
     let toward_look_at = (world.camera_look_at - world.camera_location).unit_norm();
-    let approach_vec = toward_look_at * approach * 10.0 * delta_t;
+    let approach_vec = toward_look_at * approach * delta_t;
     world.camera_location += approach_vec;
     world.camera_look_at += approach_vec;
 
     let camera_right = UP.cross(toward_look_at).unit_norm();
-    let strafe_vec = camera_right * strafe * 10.0 * delta_t;
+    let strafe_vec = camera_right * strafe * delta_t;
     world.camera_location += strafe_vec;
     world.camera_look_at += strafe_vec;
 }
