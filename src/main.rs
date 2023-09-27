@@ -2,7 +2,7 @@ use graphics_from_scratch::mesh::Mesh;
 use graphics_from_scratch::pixel_renderer::PixelRenderer;
 use graphics_from_scratch::vec::Vec3;
 use graphics_from_scratch::{
-    draw_mesh, update_world, update_world_approach, update_world_rotate, DrawOptions, TriangleFill,
+    draw_mesh, update_world, update_world_motion, update_world_rotate, DrawOptions, TriangleFill,
     World,
 };
 use sdl2::keyboard::{KeyboardState, Scancode};
@@ -68,24 +68,30 @@ fn main() {
             }
         }
 
-        let mut motion_vec = (0.0, 0.0);
+        let mut motion_vec = Vec3::new(0.0, 0.0, 0.0);
         let event_pump = pixel_renderer.context.event_pump().unwrap();
         let keyboard_state = KeyboardState::new(&event_pump);
-        if keyboard_state.is_scancode_pressed(Scancode::W) {
-            motion_vec.0 += 1.0;
-        }
         if keyboard_state.is_scancode_pressed(Scancode::A) {
-            motion_vec.1 += -1.0;
-        }
-        if keyboard_state.is_scancode_pressed(Scancode::S) {
-            motion_vec.0 += -1.0;
+            motion_vec.x += -1.0;
         }
         if keyboard_state.is_scancode_pressed(Scancode::D) {
-            motion_vec.1 += 1.0;
+            motion_vec.x += 1.0;
+        }
+        if keyboard_state.is_scancode_pressed(Scancode::C) {
+            motion_vec.y += -1.0;
+        }
+        if keyboard_state.is_scancode_pressed(Scancode::Space) {
+            motion_vec.y += 1.0;
+        }
+        if keyboard_state.is_scancode_pressed(Scancode::S) {
+            motion_vec.z += -1.0;
+        }
+        if keyboard_state.is_scancode_pressed(Scancode::W) {
+            motion_vec.z += 1.0;
         }
 
         let delta_t = (std::time::Instant::now() - prior_instant).as_secs_f32();
-        update_world_approach(&mut world, motion_vec.0, motion_vec.1, delta_t);
+        update_world_motion(&mut world, motion_vec, delta_t);
         update_world(&mut world, delta_t);
         prior_instant = std::time::Instant::now();
         draw_mesh(&mut pixel_renderer, &world);
