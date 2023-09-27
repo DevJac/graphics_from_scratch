@@ -14,7 +14,7 @@ const UP: Vec3 = Vec3::new(0.0, 1.0, 0.0);
 const LIGHT_DIRECTION: Vec3 = Vec3::new(-100.0, 100.0, -50.0);
 const ASPECT_RATIO: f32 = 9.0 / 21.0;
 const FOV: f32 = 60.0; // 60 degrees
-const Z_NEAR: f32 = 1.0;
+const Z_NEAR: f32 = 0.01;
 const Z_FAR: f32 = 10.0;
 const Z_RATIO: f32 = Z_FAR / (Z_FAR - Z_NEAR);
 
@@ -122,11 +122,33 @@ pub fn update_world_approach(world: &mut World, approach: f32, delta_t: f32) {
     world.camera_look_at += move_vec;
 }
 
+fn new_basis_matrices(up: Vec3, rot: Vec3) -> (Mat4, Mat4) {
+    let x_axis = rot.unit_norm();
+    let z_axis = x_axis.cross(up).unit_norm();
+    let y_axis = z_axis.cross(x_axis);
+    assert!(y_axis.dot(up) > 0.0);
+
+    let new_basis_mat = Mat4::new(
+        x_axis.x, y_axis.x, z_axis.x, 0.0, // End Row 1
+        x_axis.y, y_axis.y, z_axis.y, 0.0, // End Row 2
+        x_axis.z, y_axis.z, z_axis.z, 0.0, // End Row 3
+        0.0, 0.0, 0.0, 1.0, // End Row 4
+    );
+
+    let inverse_basis_mat = new_basis_mat.transpose();
+
+    (new_basis_mat, inverse_basis_mat)
+}
+
 pub fn update_world_rotate(world: &mut World, motion: (i32, i32)) {
-    let rot_x = Mat4::rotate_y(motion.0 as f32 * 0.03);
-    let rot_y = Mat4::rotate_x(motion.1 as f32 * 0.03);
+    let look = world.camera_look_at - world.camera_location;
+    let right = UP.cross(look).unit_norm();
+    let (new_basis_mat, inverse_basis_mat) = new_basis_matrices(UP, right);
+
+    let rot_y = Mat4::rotate_y(motion.0 as f32 * 0.03);
+    let rot_x = Mat4::rotate_x(motion.1 as f32 * 0.03);
     let cam_to_look = world.camera_look_at - world.camera_location;
-    let rotated = rot_x * rot_y * cam_to_look;
+    let rotated = rot_y * new_basis_mat * rot_x * inverse_basis_mat * cam_to_look;
     world.camera_look_at = world.camera_location + rotated;
 }
 
@@ -225,7 +247,6 @@ fn intersection(v0: ClipVert, v1: ClipVert, plane: &ClipPlane) -> ClipVert {
     let v1_dist_from_intersect = (v1.vert - intersect).len();
     let v0_weight = v1_dist_from_intersect / line_segment_len;
     let v1_weight = v0_dist_from_intersect / line_segment_len;
-    assert!((0.99..1.01).contains(&(v0_weight + v1_weight)));
     let intersect_uv = v0.uv * v0_weight + v1.uv * v1_weight;
 
     ClipVert {

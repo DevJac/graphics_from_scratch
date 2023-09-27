@@ -11,7 +11,7 @@ fn main() {
     let height = 360;
     assert!(width == 3440 / 4);
     assert!(height == 1440 / 4);
-    let mesh = Mesh::load_mesh("./assets/cube.obj", "./assets/cube.png");
+    let mesh = Mesh::load_mesh("./assets/f22.obj", "./assets/f22.png");
     let mut pixel_renderer = PixelRenderer::new(width, height);
     let mut world = World {
         mesh,
