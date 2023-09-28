@@ -108,8 +108,13 @@ pub struct DrawOptions {
     pub pause_rendering: bool,
 }
 
-pub struct World {
+pub struct MeshPosition {
     pub mesh: Mesh,
+    pub position: Vec3,
+}
+
+pub struct World {
+    pub meshes: Vec<MeshPosition>,
     pub camera_location: Vec3,
     pub camera_look_at: Vec3,
     pub options: DrawOptions,
@@ -163,19 +168,21 @@ pub fn update_world_rotate(world: &mut World, motion: (i32, i32)) {
 }
 
 pub fn update_world(world: &mut World, delta_t: f32) {
-    let mut rng = rand::thread_rng();
-    if !world.options.pause_rendering && rng.gen::<f32>() < 0.03 {
-        world.mesh.rotation.x = world.mesh.rotation.x * 0.999 + rng.gen_range(-10.0..10.0);
-        world.mesh.rotation.y = world.mesh.rotation.y * 0.999 + rng.gen_range(-10.0..10.0);
-        world.mesh.rotation.z = world.mesh.rotation.z * 0.999 + rng.gen_range(-10.0..10.0);
-    }
+    for mesh in world.meshes.iter_mut() {
+        let mut rng = rand::thread_rng();
+        if !world.options.pause_rendering && rng.gen::<f32>() < 0.03 {
+            mesh.mesh.rotation.x = mesh.mesh.rotation.x * 0.999 + rng.gen_range(-10.0..10.0);
+            mesh.mesh.rotation.y = mesh.mesh.rotation.y * 0.999 + rng.gen_range(-10.0..10.0);
+            mesh.mesh.rotation.z = mesh.mesh.rotation.z * 0.999 + rng.gen_range(-10.0..10.0);
+        }
 
-    if !world.options.pause_rendering {
-        for p in world.mesh.vertices.iter_mut() {
-            let rx = Mat4::rotate_x(world.mesh.rotation.x * delta_t);
-            let ry = Mat4::rotate_y(world.mesh.rotation.y * delta_t);
-            let rz = Mat4::rotate_z(world.mesh.rotation.z * delta_t);
-            *p = rx * ry * rz * (*p);
+        if !world.options.pause_rendering {
+            for p in mesh.mesh.vertices.iter_mut() {
+                let rx = Mat4::rotate_x(mesh.mesh.rotation.x * delta_t);
+                let ry = Mat4::rotate_y(mesh.mesh.rotation.y * delta_t);
+                let rz = Mat4::rotate_z(mesh.mesh.rotation.z * delta_t);
+                *p = rx * ry * rz * (*p);
+            }
         }
     }
 }
@@ -309,19 +316,25 @@ fn frustum_clip(poly: &mut Vec<ClipVert>, clip_planes: &[ClipPlane]) {
     }
 }
 
-pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, world: &World) {
-    let mut rng = rand::thread_rng();
-    let mesh: &Mesh = &world.mesh;
-    let draw_options = &world.options;
-
+pub fn draw_meshes(pixel_renderer: &mut PixelRenderer, world: &World) {
     pixel_renderer.clear_pixels(Color::RGB(0, 0, 0));
+
+    for mesh_position in world.meshes.iter() {
+        draw_mesh(pixel_renderer, world, mesh_position);
+    }
+}
+
+pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, world: &World, mesh_position: &MeshPosition) {
+    let mut rng = rand::thread_rng();
+    let mesh: &Mesh = &mesh_position.mesh;
+    let draw_options = &world.options;
 
     let clip_planes = frustum_planes();
 
     'faces: for face in mesh.faces.choose_multiple(&mut rng, mesh.faces.len()) {
-        let vert_a = mesh.vertices[face.a];
-        let vert_b = mesh.vertices[face.b];
-        let vert_c = mesh.vertices[face.c];
+        let vert_a = mesh.vertices[face.a] + mesh_position.position;
+        let vert_b = mesh.vertices[face.b] + mesh_position.position;
+        let vert_c = mesh.vertices[face.c] + mesh_position.position;
 
         let face_normal = (vert_b - vert_a).cross(vert_c - vert_a).unit_norm();
         if draw_options.backface_culling {

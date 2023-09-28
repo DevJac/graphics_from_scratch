@@ -2,8 +2,8 @@ use graphics_from_scratch::mesh::Mesh;
 use graphics_from_scratch::pixel_renderer::PixelRenderer;
 use graphics_from_scratch::vec::Vec3;
 use graphics_from_scratch::{
-    draw_mesh, update_world, update_world_motion, update_world_rotate, DrawOptions, TriangleFill,
-    World,
+    draw_meshes, update_world, update_world_motion, update_world_rotate, DrawOptions, MeshPosition,
+    TriangleFill, World,
 };
 use sdl2::keyboard::{KeyboardState, Scancode};
 
@@ -12,10 +12,20 @@ fn main() {
     let height = 360;
     assert!(width == 3440 / 4);
     assert!(height == 1440 / 4);
-    let mesh = Mesh::load_mesh("./assets/f22.obj", "./assets/f22.png");
+    let f22_mesh = Mesh::load_mesh("./assets/f22.obj", "./assets/f22.png");
+    let cube_mesh = Mesh::load_mesh("./assets/cube.obj", "./assets/cube.png");
     let mut pixel_renderer = PixelRenderer::new(width, height);
     let mut world = World {
-        mesh,
+        meshes: vec![
+            MeshPosition {
+                mesh: f22_mesh,
+                position: Vec3::new(-2.0, 0.0, 0.0),
+            },
+            MeshPosition {
+                mesh: cube_mesh,
+                position: Vec3::new(2.0, 0.0, 0.0),
+            },
+        ],
         camera_location: Vec3::new(0.0, 0.0, -5.0),
         camera_look_at: Vec3::new(0.0, 0.0, 0.0),
         options: DrawOptions {
@@ -94,7 +104,7 @@ fn main() {
         update_world_motion(&mut world, motion_vec, delta_t);
         update_world(&mut world, delta_t);
         prior_instant = std::time::Instant::now();
-        draw_mesh(&mut pixel_renderer, &world);
+        draw_meshes(&mut pixel_renderer, &world);
         pixel_renderer.render();
     }
 }
