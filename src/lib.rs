@@ -14,18 +14,23 @@ const UP: Vec3 = Vec3::new(0.0, 1.0, 0.0);
 const LIGHT_DIRECTION: Vec3 = Vec3::new(-100.0, 100.0, -50.0);
 const ASPECT_RATIO: f32 = 9.0 / 21.0;
 const FOV: f32 = 60.0; // 60 degrees
-const Z_NEAR: f32 = 0.01;
+const Z_NEAR: f32 = 2.00;
 const Z_FAR: f32 = 10.0;
 const Z_RATIO: f32 = Z_FAR / (Z_FAR - Z_NEAR);
 
-pub fn project_point_to_camera_space(p: Vec3, camera_location: Vec3, look_at: Vec3) -> Vec3 {
+pub fn project_point_to_camera_space(p: Vec4, camera_location: Vec3, look_at: Vec3) -> Vec4 {
     camera_view_matrix(camera_location, look_at, UP) * p
 }
 
-pub fn project_point_to_screen_space(screen_width: u32, screen_height: u32, p: Vec3) -> Vec4 {
+pub fn project_point_to_screen_space_pre_divide(
+    world: &World,
+    screen_width: u32,
+    screen_height: u32,
+    p: Vec3,
+) -> Vec4 {
     //  f: f32 = 1.732_051;  (1 / (tan(FOV / 2)))
     let f: f32 = 1.0 / ((FOV.to_radians() / 2.0).tan());
-    let projection_matrix = Mat4::new(
+    let projection_matrix: Mat4 = Mat4::new(
         // Row 1
         ASPECT_RATIO * f,
         0.0,
@@ -48,8 +53,16 @@ pub fn project_point_to_screen_space(screen_width: u32, screen_height: u32, p: V
         0.0,
     );
 
-    let p = projection_matrix * p.to_vec4();
+    projection_matrix
+        * project_point_to_camera_space(p.to_vec4(), world.camera_location, world.camera_look_at)
+}
 
+pub fn project_point_to_screen_space_divide(
+    world: &World,
+    screen_width: u32,
+    screen_height: u32,
+    p: Vec4,
+) -> Vec4 {
     let half_width: f32 = screen_width as f32 / 2.0;
     let half_height: f32 = screen_height as f32 / 2.0;
     let centered_x = (p.x / p.w) * half_width + half_width;
@@ -203,12 +216,12 @@ struct ClipPlane {
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 struct ClipVert {
-    vert: Vec3,
+    vert: Vec4,
     uv: Vec2,
 }
 
 impl ClipVert {
-    fn new(vert: Vec3, uv: Vec2) -> Self {
+    fn new(vert: Vec4, uv: Vec2) -> Self {
         ClipVert { vert, uv }
     }
 }
@@ -239,25 +252,26 @@ fn frustum_planes() -> Vec<ClipPlane> {
             point: Vec3::new(0.0, 0.0, Z_FAR),
             norm: Vec3::new(0.0, 0.0, -1.0),
         },
+        // TODO: These planes don't use W
         ClipPlane {
             name: "left",
-            point: Vec3::new(0.0, 0.0, 0.0),
-            norm: Mat4::rotate_y(-horizontal_fov_in_degrees) * Vec3::new(1.0, 0.0, 0.0),
+            point: Vec3::new(-1.0, 0.0, 0.0),
+            norm: Vec3::new(1.0, 0.0, 0.0),
         },
         ClipPlane {
             name: "right",
-            point: Vec3::new(0.0, 0.0, 0.0),
-            norm: Mat4::rotate_y(horizontal_fov_in_degrees) * Vec3::new(-1.0, 0.0, 0.0),
+            point: Vec3::new(1.0, 0.0, 0.0),
+            norm: Vec3::new(-1.0, 0.0, 0.0),
         },
         ClipPlane {
             name: "top",
-            point: Vec3::new(0.0, 0.0, 0.0),
-            norm: Mat4::rotate_x(-FOV / 2.0) * Vec3::new(0.0, -1.0, 0.0),
+            point: Vec3::new(0.0, 1.0, 0.0),
+            norm: Vec3::new(0.0, -1.0, 0.0),
         },
         ClipPlane {
             name: "bottom",
-            point: Vec3::new(0.0, 0.0, 0.0),
-            norm: Mat4::rotate_x(FOV / 2.0) * Vec3::new(0.0, 1.0, 0.0),
+            point: Vec3::new(0.0, -1.0, 0.0),
+            norm: Vec3::new(0.0, 1.0, 0.0),
         },
     ]
 }
@@ -268,8 +282,8 @@ fn in_plane(vert: Vec3, plane: &ClipPlane) -> f32 {
 
 fn intersection(v0: ClipVert, v1: ClipVert, plane: &ClipPlane) -> ClipVert {
     // See: https://import.cdn.thinkific.com/167815/JoyKennethClipping-200905-175314.pdf
-    let d0 = (v0.vert - plane.point).dot(plane.norm);
-    let d1 = (v1.vert - plane.point).dot(plane.norm);
+    let d0 = (v0.vert.to_vec3() - plane.point).dot(plane.norm);
+    let d1 = (v1.vert.to_vec3() - plane.point).dot(plane.norm);
     let t = d0 / (d0 - d1);
     let intersect = v0.vert + ((v1.vert - v0.vert) * t);
 
@@ -301,7 +315,7 @@ fn frustum_clip(poly: &mut Vec<ClipVert>, clip_planes: &[ClipPlane]) {
                 poly[0]
             };
 
-            if in_plane(v0.vert, plane) == in_plane(v1.vert, plane) {
+            if in_plane(v0.vert.to_vec3(), plane) == in_plane(v1.vert.to_vec3(), plane) {
                 i += 1;
                 continue;
             } else {
@@ -312,7 +326,7 @@ fn frustum_clip(poly: &mut Vec<ClipVert>, clip_planes: &[ClipPlane]) {
 
             i += 1;
         }
-        poly.retain(|v| in_plane(v.vert, plane) >= 0.0);
+        poly.retain(|v| in_plane(v.vert.to_vec3(), plane) >= 0.0);
     }
 }
 
@@ -348,19 +362,36 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, world: &World, mesh_positio
         let uv_b = mesh.uvs[face.b_uv];
         let uv_c = mesh.uvs[face.c_uv];
 
+        let is_facing_light = face_normal.dot(LIGHT_DIRECTION.unit_norm());
+        let (intensity_min, intensity_max) = (0.4, 1.2);
+        let light_intensity = ((is_facing_light + 1.0) / (1.0 + 1.0))
+            * (intensity_max - intensity_min)
+            + intensity_min;
+
+        let pa = project_point_to_screen_space_pre_divide(
+            world,
+            pixel_renderer.width,
+            pixel_renderer.height,
+            vert_a,
+        );
+        let pb = project_point_to_screen_space_pre_divide(
+            world,
+            pixel_renderer.width,
+            pixel_renderer.height,
+            vert_b,
+        );
+        let pc = project_point_to_screen_space_pre_divide(
+            world,
+            pixel_renderer.width,
+            pixel_renderer.height,
+            vert_c,
+        );
+
+        // Clipping
         let mut polygons = Vec::with_capacity(10);
-        polygons.push(ClipVert::new(
-            project_point_to_camera_space(vert_a, world.camera_location, world.camera_look_at),
-            uv_a,
-        ));
-        polygons.push(ClipVert::new(
-            project_point_to_camera_space(vert_b, world.camera_location, world.camera_look_at),
-            uv_b,
-        ));
-        polygons.push(ClipVert::new(
-            project_point_to_camera_space(vert_c, world.camera_location, world.camera_look_at),
-            uv_c,
-        ));
+        polygons.push(ClipVert::new(pa, uv_a));
+        polygons.push(ClipVert::new(pb, uv_b));
+        polygons.push(ClipVert::new(pc, uv_c));
 
         frustum_clip(&mut polygons, &clip_planes);
 
@@ -371,26 +402,32 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, world: &World, mesh_positio
         assert!(polygons.len() >= 3);
 
         for i in 1..(polygons.len() - 1) {
-            let vert_a = polygons[0].vert;
-            let vert_b = polygons[i].vert;
-            let vert_c = polygons[i + 1].vert;
+            let pa = polygons[0].vert;
+            let pb = polygons[i].vert;
+            let pc = polygons[i + 1].vert;
 
             let uv_a = polygons[0].uv;
             let uv_b = polygons[i].uv;
             let uv_c = polygons[i + 1].uv;
 
-            let is_facing_light = face_normal.dot(LIGHT_DIRECTION.unit_norm());
-            let (intensity_min, intensity_max) = (0.4, 1.2);
-            let light_intensity = ((is_facing_light + 1.0) / (1.0 + 1.0))
-                * (intensity_max - intensity_min)
-                + intensity_min;
-
-            let pa =
-                project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_a);
-            let pb =
-                project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_b);
-            let pc =
-                project_point_to_screen_space(pixel_renderer.width, pixel_renderer.height, vert_c);
+            let pa = project_point_to_screen_space_divide(
+                world,
+                pixel_renderer.width,
+                pixel_renderer.height,
+                pa,
+            );
+            let pb = project_point_to_screen_space_divide(
+                world,
+                pixel_renderer.width,
+                pixel_renderer.height,
+                pb,
+            );
+            let pc = project_point_to_screen_space_divide(
+                world,
+                pixel_renderer.width,
+                pixel_renderer.height,
+                pc,
+            );
 
             if draw_options.triangle_fill == TriangleFill::Color {
                 draw_triangle_color(

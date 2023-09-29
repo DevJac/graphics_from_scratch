@@ -16,16 +16,10 @@ fn main() {
     let cube_mesh = Mesh::load_mesh("./assets/cube.obj", "./assets/cube.png");
     let mut pixel_renderer = PixelRenderer::new(width, height);
     let mut world = World {
-        meshes: vec![
-            MeshPosition {
-                mesh: f22_mesh,
-                position: Vec3::new(-2.0, 0.0, 0.0),
-            },
-            MeshPosition {
-                mesh: cube_mesh,
-                position: Vec3::new(2.0, 0.0, 0.0),
-            },
-        ],
+        meshes: vec![MeshPosition {
+            mesh: cube_mesh,
+            position: Vec3::new(0.0, 0.0, 0.0),
+        }],
         camera_location: Vec3::new(0.0, 0.0, -5.0),
         camera_look_at: Vec3::new(0.0, 0.0, 0.0),
         options: DrawOptions {

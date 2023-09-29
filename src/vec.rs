@@ -255,6 +255,10 @@ impl Vec4 {
     pub fn to_vec3(&self) -> Vec3 {
         Vec3::new(self.x, self.y, self.z)
     }
+
+    pub fn to_vec3_w(&self) -> Vec3 {
+        Vec3::new(self.x, self.y, self.w)
+    }
 }
 
 impl Add for Vec4 {
