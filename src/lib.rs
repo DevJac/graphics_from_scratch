@@ -22,12 +22,7 @@ pub fn project_point_to_camera_space(p: Vec4, camera_location: Vec3, look_at: Ve
     camera_view_matrix(camera_location, look_at, UP) * p
 }
 
-pub fn project_point_to_screen_space_pre_divide(
-    world: &World,
-    screen_width: u32,
-    screen_height: u32,
-    p: Vec3,
-) -> Vec4 {
+pub fn project_point_to_screen_space_pre_divide(world: &World, p: Vec3) -> Vec4 {
     //  f: f32 = 1.732_051;  (1 / (tan(FOV / 2)))
     let f: f32 = 1.0 / ((FOV.to_radians() / 2.0).tan());
     let projection_matrix: Mat4 = Mat4::new(
@@ -58,7 +53,6 @@ pub fn project_point_to_screen_space_pre_divide(
 }
 
 pub fn project_point_to_screen_space_divide(
-    world: &World,
     screen_width: u32,
     screen_height: u32,
     p: Vec4,
@@ -67,7 +61,8 @@ pub fn project_point_to_screen_space_divide(
     let half_height: f32 = screen_height as f32 / 2.0;
     let centered_x = (p.x / p.w) * half_width + half_width;
     let centered_y = (p.y / p.w) * half_height + half_height;
-    Vec4::new(centered_x, centered_y, p.z, p.w)
+    let centered_z = p.z / p.w;
+    Vec4::new(centered_x, centered_y, centered_z, p.w)
 }
 
 pub fn camera_view_matrix(camera_location: Vec3, look_at: Vec3, up: Vec3) -> Mat4 {
@@ -210,8 +205,8 @@ fn color_mul(color: Color, multiplier: f32) -> Color {
 #[derive(Debug, PartialEq, Clone, Copy)]
 struct ClipPlane {
     name: &'static str,
-    point: Vec3,
-    norm: Vec3,
+    point: Vec4,
+    norm: Vec4,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -227,63 +222,48 @@ impl ClipVert {
 }
 
 fn frustum_planes() -> Vec<ClipPlane> {
-    // We can't simply multiply angles by the aspect ratio.
-    // We need to convert to triangle ratios and scale one side the the triangle. Time for trig.
-    // The math:
-    // tan(FOV / 2) = h / d; where h is the screen height and d is the camera distance from the screen (d will not matter much)
-    // tan(?) = w / d; we want to find ?
-    // a = h / w
-    // w = h / a
-    // (h / d) / a = w / d
-    // atan(w / d) = ?; this is what we want
-    let vertical_fov_in_degrees = FOV;
-    let horizontal_fov_in_degrees = ((vertical_fov_in_degrees / 2.0).to_radians().tan()
-        / ASPECT_RATIO)
-        .atan()
-        .to_degrees();
     vec![
         ClipPlane {
             name: "near",
-            point: Vec3::new(0.0, 0.0, Z_NEAR),
-            norm: Vec3::new(0.0, 0.0, 1.0),
+            point: Vec4::new(0.0, 0.0, 0.0, 1.0),
+            norm: Vec4::new(0.0, 0.0, 1.0, 0.0),
         },
         ClipPlane {
             name: "far",
-            point: Vec3::new(0.0, 0.0, Z_FAR),
-            norm: Vec3::new(0.0, 0.0, -1.0),
+            point: Vec4::new(0.0, 0.0, 1.0, 1.0),
+            norm: Vec4::new(0.0, 0.0, -1.0, 1.0),
         },
-        // TODO: These planes don't use W
         ClipPlane {
             name: "left",
-            point: Vec3::new(-1.0, 0.0, 0.0),
-            norm: Vec3::new(1.0, 0.0, 0.0),
+            point: Vec4::new(-1.0, 0.0, 0.0, 1.0),
+            norm: Vec4::new(1.0, 0.0, 0.0, 1.0),
         },
         ClipPlane {
             name: "right",
-            point: Vec3::new(1.0, 0.0, 0.0),
-            norm: Vec3::new(-1.0, 0.0, 0.0),
+            point: Vec4::new(1.0, 0.0, 0.0, 1.0),
+            norm: Vec4::new(-1.0, 0.0, 0.0, 1.0),
         },
         ClipPlane {
             name: "top",
-            point: Vec3::new(0.0, 1.0, 0.0),
-            norm: Vec3::new(0.0, -1.0, 0.0),
+            point: Vec4::new(0.0, 1.0, 0.0, 1.0),
+            norm: Vec4::new(0.0, -1.0, 0.0, 1.0),
         },
         ClipPlane {
             name: "bottom",
-            point: Vec3::new(0.0, -1.0, 0.0),
-            norm: Vec3::new(0.0, 1.0, 0.0),
+            point: Vec4::new(0.0, -1.0, 0.0, 1.0),
+            norm: Vec4::new(0.0, 1.0, 0.0, 1.0),
         },
     ]
 }
 
-fn in_plane(vert: Vec3, plane: &ClipPlane) -> f32 {
+fn in_plane(vert: Vec4, plane: &ClipPlane) -> f32 {
     ((vert - plane.point).dot(plane.norm) + 0.000_1).signum()
 }
 
 fn intersection(v0: ClipVert, v1: ClipVert, plane: &ClipPlane) -> ClipVert {
     // See: https://import.cdn.thinkific.com/167815/JoyKennethClipping-200905-175314.pdf
-    let d0 = (v0.vert.to_vec3() - plane.point).dot(plane.norm);
-    let d1 = (v1.vert.to_vec3() - plane.point).dot(plane.norm);
+    let d0 = (v0.vert - plane.point).dot(plane.norm);
+    let d1 = (v1.vert - plane.point).dot(plane.norm);
     let t = d0 / (d0 - d1);
     let intersect = v0.vert + ((v1.vert - v0.vert) * t);
 
@@ -315,7 +295,7 @@ fn frustum_clip(poly: &mut Vec<ClipVert>, clip_planes: &[ClipPlane]) {
                 poly[0]
             };
 
-            if in_plane(v0.vert.to_vec3(), plane) == in_plane(v1.vert.to_vec3(), plane) {
+            if in_plane(v0.vert, plane) == in_plane(v1.vert, plane) {
                 i += 1;
                 continue;
             } else {
@@ -326,7 +306,7 @@ fn frustum_clip(poly: &mut Vec<ClipVert>, clip_planes: &[ClipPlane]) {
 
             i += 1;
         }
-        poly.retain(|v| in_plane(v.vert.to_vec3(), plane) >= 0.0);
+        poly.retain(|v| in_plane(v.vert, plane) >= 0.0);
     }
 }
 
@@ -368,24 +348,9 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, world: &World, mesh_positio
             * (intensity_max - intensity_min)
             + intensity_min;
 
-        let pa = project_point_to_screen_space_pre_divide(
-            world,
-            pixel_renderer.width,
-            pixel_renderer.height,
-            vert_a,
-        );
-        let pb = project_point_to_screen_space_pre_divide(
-            world,
-            pixel_renderer.width,
-            pixel_renderer.height,
-            vert_b,
-        );
-        let pc = project_point_to_screen_space_pre_divide(
-            world,
-            pixel_renderer.width,
-            pixel_renderer.height,
-            vert_c,
-        );
+        let pa = project_point_to_screen_space_pre_divide(world, vert_a);
+        let pb = project_point_to_screen_space_pre_divide(world, vert_b);
+        let pc = project_point_to_screen_space_pre_divide(world, vert_c);
 
         // Clipping
         let mut polygons = Vec::with_capacity(10);
@@ -411,23 +376,22 @@ pub fn draw_mesh(pixel_renderer: &mut PixelRenderer, world: &World, mesh_positio
             let uv_c = polygons[i + 1].uv;
 
             let pa = project_point_to_screen_space_divide(
-                world,
                 pixel_renderer.width,
                 pixel_renderer.height,
                 pa,
             );
             let pb = project_point_to_screen_space_divide(
-                world,
                 pixel_renderer.width,
                 pixel_renderer.height,
                 pb,
             );
             let pc = project_point_to_screen_space_divide(
-                world,
                 pixel_renderer.width,
                 pixel_renderer.height,
                 pc,
             );
+
+            println!("camera pos {:?}", world.camera_location);
 
             if draw_options.triangle_fill == TriangleFill::Color {
                 draw_triangle_color(
